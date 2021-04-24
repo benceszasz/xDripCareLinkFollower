@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="percentile_outer">#005882</color>
+    <color name="percentile_inner">#2d95c2</color>
+    <color name="percentile_median">#bce6ff</color>
+
+    <color name="colorPrimary">#3F51B5</color>
+    <color name="colorPrimaryDark">#303f9f</color>
+    <color name="colorAccent">#ff4081</color>
+    <color name="year">#999999</color>
+    <color name="title">#62a262</color>
+    <color name="yellow100">#fff9c4</color>
+    <color name="darker_white">#d3d3d3</color>
+</resources>

@@ -1,0 +1,344 @@
+<!--                        android:targetPackage="@string/target_package" -->
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+        android:icon="@drawable/ic_add_alert_grey600_48dp"
+        android:key="whole_alerts_screen"
+        android:summary="@string/glucose_calibration_and_other_alerts"
+        android:title="@string/alarms_and_alerts">
+        <PreferenceCategory
+            android:key="alerts_category"
+            android:title="@string/alerts_and_notifications">
+            <Preference
+                android:key="bg_level_alerts"
+                android:title="@string/glucose_level_alerts_list">
+                <intent
+                    android:action="android.intent.action.MAIN"
+                    android:targetClass="com.eveningoutpost.dexdrip.AlertList"
+                    android:targetPackage="@string/local_target_package" />
+            </Preference>
+
+            <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+                android:key="bg_alerts_screen"
+                android:title="@string/glucose_alerts_settings">
+                <ListPreference
+                    android:defaultValue="High"
+                    android:entries="@array/BgAlertProfileEntries"
+                    android:entryValues="@array/BgAlertProfileValues"
+                    android:key="bg_alert_profile"
+                    android:title="@string/alert_volume_profile" />
+
+                <CheckBoxPreference
+                    android:defaultValue="true"
+                    android:key="smart_snoozing"
+                    android:summary="@string/keep_snoozing_if_glucose_is_heading_in_right_direction"
+                    android:title="@string/smart_snoozing" />
+
+                <CheckBoxPreference
+                    android:defaultValue="true"
+                    android:key="smart_alerting"
+                    android:summary="@string/dont_alert_if_glucose_in_right_direction"
+                    android:title="@string/smart_alerting" />
+
+                <CheckBoxPreference
+                    android:defaultValue="true"
+                    android:key="no_alarms_during_calls"
+                    android:summary="@string/alarms_silenced_during_telephone_calls"
+                    android:title="@string/dont_alarm_during_phone_calls" />
+
+                <CheckBoxPreference
+                    android:defaultValue="true"
+                    android:key="buttons_silence_alert"
+                    android:summary="@string/volume_buttons_snooze"
+                    android:title="@string/buttons_silence_alarms" />
+
+                <CheckBoxPreference
+                    android:defaultValue="false"
+                    android:key="start_snoozed"
+                    android:summary="@string/alerts_start_out_snoozed_and_must_persist_for_a_while"
+                    android:title="@string/start_snoozed" />
+
+                <CheckBoxPreference
+                    android:defaultValue="false"
+                    android:key="bg_alerts_from_main_menu"
+                    android:summary="@string/create_shortcut"
+                    android:title="@string/shortcut_to_bg_alerts" />
+
+                <CheckBoxPreference
+                    android:defaultValue="false"
+                    android:key="disable_alerts_stale_data"
+                    android:summary="@string/suppress_alerts_missed_readings"
+                    android:title="@string/suppress_alerts_if_missed_readings" />
+                <EditTextPreference
+                    android:defaultValue="15"
+                    android:dependency="disable_alerts_stale_data"
+                    android:inputType="number"
+                    android:key="disable_alerts_stale_data_minutes"
+                    android:summary="@string/suppress_alerts_after"
+                    android:title="@string/suppress_alerts_after" />
+
+                <CheckBoxPreference
+                    android:defaultValue="false"
+                    android:key="use_notification_channels"
+                    android:summary="@string/summary_use_notification_channels"
+                    android:title="@string/title_use_notification_channels" />
+
+                <CheckBoxPreference
+                    android:defaultValue="false"
+                    android:dependency="use_notification_channels"
+                    android:key="ongoing_notification_channel"
+                    android:summary="@string/summary_ongoing_notification_channel"
+                    android:title="@string/title_ongoing_notification_channel" />
+
+                <CheckBoxPreference
+                    android:defaultValue="false"
+                    android:dependency="use_notification_channels"
+                    android:key="notification_channels_grouping"
+                    android:summary="@string/summary_notification_channels_grouping"
+                    android:title="@string/title_notification_channels_grouping" />
+
+            </PreferenceScreen>
+
+
+            <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+                android:key="calibration_alerts_screen"
+                android:title="@string/calibration_alerts">
+                <SwitchPreference
+                    android:defaultValue="false"
+                    android:key="calibration_notifications"
+                    android:summary="@string/alert_calibration_request"
+                    android:title="@string/calibration_alerts" />
+                <EditTextPreference
+                    android:defaultValue="24"
+                    android:dependency="calibration_notifications"
+                    android:key="calibration_reminder_hours"
+                    android:numeric="integer"
+                    android:summary="@string/calibrations_request_time_time_difference"
+                    android:title="@string/hours_between_calibrations" />
+                <RingtonePreference
+                    android:defaultValue="content://settings/system/notification_sound"
+                    android:key="calibration_notification_sound"
+                    android:ringtoneType="all"
+                    android:showSilent="true"
+                    android:summary="@string/calibrations_sound"
+                    android:dependency="calibration_notifications"
+                    android:title="@string/calibration_request_sound" />
+                <CheckBoxPreference
+                    android:defaultValue="true"
+                    android:dependency="calibration_notifications"
+                    android:key="calibration_alerts_override_silent"
+                    android:title="@string/override_silent_mode" />
+                <CheckBoxPreference
+                    android:defaultValue="true"
+                    android:dependency="calibration_notifications"
+                    android:key="calibration_alerts_while_charging"
+                    android:summary="@string/no_calibration_requests_charging"
+                    android:title="@string/even_when_charging" />
+                <CheckBoxPreference
+                    android:defaultValue="true"
+                    android:dependency="calibration_notifications"
+                    android:key="calibration_alerts_repeat"
+                    android:summary="@string/keep_alert_no_calibration"
+                    android:title="@string/repeat_alerts" />
+                <EditTextPreference
+                    android:defaultValue="20"
+                    android:dependency="calibration_alerts_repeat"
+                    android:key="calibration_snooze"
+                    android:numeric="integer"
+                    android:summary="@string/calibration_minutes_reraise"
+                    android:title="@string/alert_repeat_minutes" />
+                <SwitchPreference
+                    android:defaultValue="true"
+                    android:key="play_sound_for_initial_calibration"
+                    android:summary="@string/summary_play_sound_for_initial_calibration"
+                    android:title="@string/title_play_sound_for_initial_calibration" />
+            </PreferenceScreen>
+
+            <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+                android:key="missed_readings_screen"
+                android:title="@string/missed_reading_alert">
+                <intent
+                    android:action="android.intent.action.MAIN"
+                    android:targetClass="com.eveningoutpost.dexdrip.MissedReadingActivity"
+                    android:targetPackage="@string/local_target_package" />
+            </PreferenceScreen>
+
+            <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+                android:key="other_alerts_screen"
+                android:title="@string/other_alerts">
+
+                <PreferenceCategory android:title="@string/category_noisy_readings">
+                    <CheckBoxPreference
+                        android:defaultValue="false"
+                        android:key="bg_unclear_readings_alerts"
+                        android:title="@string/bad_noisy_value_alerts" />
+                    <EditTextPreference
+                        android:defaultValue="90"
+                        android:dependency="bg_unclear_readings_alerts"
+                        android:inputType="number"
+                        android:key="bg_unclear_readings_minutes"
+                        android:summary=""
+                        android:title="@string/alert_noisy_values" />
+                    <EditTextPreference
+                        android:defaultValue="20"
+                        android:dependency="bg_unclear_readings_alerts"
+                        android:key="bg_unclear_readings_alert_snooze"
+                        android:numeric="integer"
+                        android:summary="@string/alert_minutes_reraise"
+                        android:title="@string/alert_snooze" />
+                    <CheckBoxPreference
+                        android:dependency="bg_unclear_readings_alerts"
+                        android:key="bg_unclear_readings_alert_enable_alerts_reraise"
+                        android:title="@string/reraise_before_snooze"
+                        android:summary="@string/reraise_not_snoozed_sooner"
+                        android:defaultValue="false" />
+                    <EditTextPreference
+                        android:dependency="bg_unclear_readings_alert_enable_alerts_reraise"
+                        android:key="bg_unclear_readings_alert_reraise_sec"
+                        android:title="@string/alert_reraise_time"
+                        android:numeric="integer"
+                        android:summary="@string/alert_seconds_reraise"
+                        android:defaultValue="60" />
+                </PreferenceCategory>
+
+                <PreferenceCategory android:title="@string/category_falling_rising_bg">
+                    <CheckBoxPreference
+                        android:defaultValue="false"
+                        android:key="falling_alert"
+                        android:title="@string/bg_falling_fast" />
+                    <ListPreference
+                        android:defaultValue="3"
+                        android:dependency="falling_alert"
+                        android:entries="@array/risingEntries"
+                        android:entryValues="@array/risingValues"
+                        android:key="falling_bg_val"
+                        android:title="@string/falling_threshold" />
+                    <CheckBoxPreference
+                        android:defaultValue="false"
+                        android:key="rising_alert"
+                        android:title="@string/bg_rising_fast" />
+                    <ListPreference
+                        android:defaultValue="3"
+                        android:dependency="rising_alert"
+                        android:entries="@array/risingEntries"
+                        android:entryValues="@array/risingValues"
+                        android:key="rising_bg_val"
+                        android:title="@string/rising_threshold" />
+                </PreferenceCategory>
+
+
+                <PreferenceCategory android:title="@string/category_alert_prefs">
+                    <RingtonePreference
+                        android:defaultValue="content://settings/system/alarm_alert"
+                        android:key="other_alerts_sound"
+                        android:ringtoneType="all"
+                        android:showSilent="true"
+                        android:summary="@string/set_sound_for_bg_alerts"
+                        android:title="@string/alert_sound" />
+                    <CheckBoxPreference
+                        android:defaultValue="false"
+                        android:key="other_alerts_override_silent"
+                        android:title="@string/override_silent_mode_these" />
+                </PreferenceCategory>
+            </PreferenceScreen>
+            <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+                android:key="smart_alerts_screen"
+                android:title="@string/extra_alerts_xdrip_plus">
+                <PreferenceCategory
+                    android:summary="@string/summary_persistent_high_alert"
+                    android:title="@string/persistent_high_alert">
+                    <SwitchPreference
+                        android:defaultValue="false"
+                        android:key="persistent_high_alert_enabled"
+                        android:summary="@string/alarm_if_above_high_value"
+                        android:title="@string/persistent_high_alert" />
+                    <EditTextPreference
+                        android:defaultValue="60"
+                        android:dependency="persistent_high_alert_enabled"
+                        android:inputType="number"
+                        android:key="persistent_high_threshold_mins"
+                        android:numeric="integer"
+                        android:title="@string/for_longer_than_minutes" />
+                    <EditTextPreference
+                        android:defaultValue="20"
+                        android:dependency="persistent_high_alert_enabled"
+                        android:inputType="number"
+                        android:key="persistent_high_repeat_mins"
+                        android:numeric="integer"
+                        android:title="@string/persistent_repeat_max" />
+                    <RingtonePreference
+                        android:defaultValue="content://settings/system/notification_sound"
+                        android:dependency="persistent_high_alert_enabled"
+                        android:key="persistent_high_alert_sound"
+                        android:ringtoneType="all"
+                        android:showSilent="true"
+                        android:summary="@string/choose_sound_used_for_persistent_high_alarm"
+                        android:title="@string/persistent_high_sound" />
+                </PreferenceCategory>
+                <PreferenceCategory
+                    android:summary="@string/momentum_indicates_low"
+                    android:title="@string/forecasted_low_alert">
+                    <SwitchPreference
+                        android:defaultValue="true"
+                        android:key="predict_lows"
+                        android:summary="@string/extrapolate_data_to_try_to_predict_lows"
+                        android:title="@string/forecast_lows" />
+                    <CheckBoxPreference
+                        android:defaultValue="false"
+                        android:dependency="predict_lows"
+                        android:key="predict_lows_alarm"
+                        android:summary="@string/notify_when_predicted_low_time_reaches_threshold"
+                        android:title="@string/raise_alarm_on_forecast_low" />
+                    <EditTextPreference
+                        android:defaultValue="40"
+                        android:dependency="predict_lows_alarm"
+                        android:digits="0123456789"
+                        android:inputType="number"
+                        android:key="low_predict_alarm_level"
+                        android:summary=""
+                        android:title="@string/alarm_at_forecasted_low_mins" />
+                    <RingtonePreference
+                        android:defaultValue="content://settings/system/notification_sound"
+                        android:dependency="predict_lows"
+                        android:key="bg_predict_alert_sound"
+                        android:ringtoneType="all"
+                        android:showSilent="true"
+                        android:summary="@string/choose_sound_used_for_predicted_low_alarm"
+                        android:title="@string/predicted_low_sound" />
+                </PreferenceCategory>
+                <PreferenceCategory android:title="@string/other_xdrip_plus_alerts">
+                    <SwitchPreference
+                        android:defaultValue="true"
+                        android:key="bridge_battery_alerts"
+                        android:summary="@string/notify_on_low_battery_level"
+                        android:title="@string/collector_battery_alerts" />
+                    <EditTextPreference
+                        android:defaultValue="30"
+                        android:dependency="bridge_battery_alerts"
+                        android:digits="0123456789"
+                        android:inputType="number"
+                        android:key="bridge_battery_alert_level"
+                        android:summary=""
+                        android:title="@string/low_battery_percentage" />
+                    <SwitchPreference
+                        android:defaultValue="true"
+                        android:key="parakeet_status_alerts"
+                        android:summary="@string/notify_when_parakeet_device_stops_checking_in"
+                        android:title="@string/parakeet_related_alerts" />
+                    <CheckBoxPreference
+                        android:defaultValue="false"
+                        android:dependency="parakeet_status_alerts"
+                        android:key="parakeet_charge_silent"
+                        android:summary="@string/raise_parakeet_notification_silently_when_charging"
+                        android:title="@string/silent_alert_when_charging" />
+                    <SwitchPreference
+                        android:defaultValue="false"
+                        android:key="follower_chime"
+                        android:summary="@string/notify_data_arrives_master"
+                        android:title="@string/follower_chime_new" />
+                </PreferenceCategory>
+            </PreferenceScreen>
+        </PreferenceCategory>
+    </PreferenceScreen>
+</PreferenceScreen>
+
+

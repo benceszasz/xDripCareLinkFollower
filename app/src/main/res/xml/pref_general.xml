@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+    <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+        android:key="xdrip_units_settings"
+        android:summary="@string/mmol_or_mgdl_high_and_low"
+        android:icon="@drawable/ic_ruler_grey600_48dp"
+        android:title="@string/glucose_units">
+        <PreferenceCategory
+            android:title="@string/general_settings"
+            android:key="bgRange">
+            <ListPreference
+                android:key="units"
+                android:title="@string/glucose_units"
+                android:entries="@array/bgUnitEntries"
+                android:entryValues="@array/bgUnitValues"
+                android:defaultValue="mgdl"/>
+            <EditTextPreference
+                android:key="highValue"
+                android:title="@string/high_value"
+                android:numeric="decimal"
+                android:inputType="numberDecimal"
+                android:summary="@string/maximum_value"
+                android:defaultValue="170" />
+            <EditTextPreference
+                android:key="lowValue"
+                android:title="@string/low_value"
+                android:numeric="decimal"
+                android:inputType="numberDecimal"
+                android:summary="@string/minimum_value"
+                android:defaultValue="70" />
+        </PreferenceCategory>
+    </PreferenceScreen>
+</PreferenceScreen>

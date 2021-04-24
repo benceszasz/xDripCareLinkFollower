@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools" android:layout_width="match_parent"
+    android:layout_height="match_parent" tools:context=".Home" tools:deviceIds="wear_square"
+    android:background="@color/black"
+    android:id="@+id/main_layout">
+
+    <LinearLayout
+        android:id="@+id/menuextras_layout"
+        android:layout_width="36dp"
+        android:layout_height="60dp"
+        android:orientation="vertical"
+        android:textAlignment="center"
+        android:baselineAligned="false"
+        android:layout_gravity="left|top"
+        android:gravity="left|top">
+
+        <LinearLayout
+            android:id="@+id/menu_layout"
+            android:layout_width="30dp"
+            android:orientation="vertical"
+            android:layout_height="wrap_content"
+            android:textAlignment="center"
+            android:baselineAligned="false"
+            android:layout_gravity="center_horizontal|center_vertical"
+            android:gravity="center_horizontal|center_vertical">
+
+            <Button
+                android:layout_width="20dp"
+                android:layout_height="30dp"
+                android:drawableTop="@drawable/menu"
+                android:id="@+id/menuButton"
+                android:paddingBottom="0dp"
+                android:paddingEnd="0dp"
+                android:paddingTop="10dp"
+                android:paddingStart="0dp"
+                android:layout_marginRight="0dp"
+                android:layout_marginTop="-10dp"
+                android:background="@android:color/transparent"
+                android:text=""
+                android:textSize="0sp"
+                android:textAlignment="gravity"
+                android:gravity="center_horizontal|center_vertical"
+                android:layout_below="@+id/walkButton"
+                android:layout_alignStart="@+id/walkButton" />
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/steps_layout"
+            android:layout_width="36dp"
+            android:orientation="vertical"
+            android:layout_height="wrap_content"
+            android:textAlignment="center"
+            android:baselineAligned="false"
+            android:layout_gravity="center_horizontal|center_vertical"
+            android:gravity="center_horizontal|center_vertical">
+
+            <Button
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:drawableTop="@drawable/ic_directions_walk_white_18dp"
+                android:id="@+id/walkButton"
+                android:paddingBottom="0dp"
+                android:paddingEnd="0dp"
+                android:paddingTop="0dp"
+                android:paddingStart="0dp"
+                android:layout_marginRight="0dp"
+                android:layout_marginTop="0dp"
+                android:background="@android:color/transparent"
+                android:text="12345"
+                android:textSize="10sp"
+                android:textAlignment="gravity"
+                android:gravity="center_horizontal|center_vertical" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"
+        android:textAlignment="center">
+
+        <LinearLayout
+            android:id="@+id/sgvdirectiondelta_layout"
+            android:orientation="horizontal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAlignment="center"
+            android:paddingTop="15dp"
+            android:weightSum="1"
+            android:layout_gravity="center_horizontal">
+
+            <TextView
+                android:id="@+id/sgv"
+                android:textSize="50sp"
+                android:text="---"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#FFFFFF"
+                android:layout_gravity="bottom"
+                android:gravity="bottom|right" />
+
+            <LinearLayout
+                android:id="@+id/directiondelta_layout"
+                android:orientation="vertical"
+                android:layout_width="fill_parent"
+                android:layout_height="fill_parent"
+                android:weightSum="1"
+                android:textAlignment="center"
+                android:baselineAligned="false"
+                android:layout_gravity="center_horizontal">
+
+                <TextView
+                    android:id="@+id/direction"
+                    android:textSize="27sp"
+                    android:textStyle="bold"
+                    android:text="--"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textColor="#FFFFFF"
+                    android:textAlignment="center"
+                    android:layout_gravity="center_horizontal|bottom"
+                    android:gravity="center_horizontal|bottom"
+                    android:paddingTop="1dp" />
+
+                <TextView
+                    android:id="@+id/delta"
+                    android:textSize="10sp"
+                    android:text="--- mg/dl"
+                    android:layout_width="fill_parent"
+                    android:layout_height="wrap_content"
+                    android:textColor="#FFFFFF"
+                    android:layout_gravity="bottom"
+                    android:gravity="center_horizontal" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:background="#d3d3d3"
+            android:id="@+id/secondary_layout"
+            android:padding="2dp">
+
+            <LinearLayout
+                android:orientation="horizontal"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textAlignment="center"
+                android:layout_gravity="center_horizontal">
+
+                <TextView
+                    android:id="@+id/timestamp"
+                    android:textSize="12sp"
+                    android:text="-- Minutes ago"
+                    android:layout_width="wrap_content"
+                    android:textAlignment="center"
+                    android:textColor="#000000"
+                    android:paddingLeft="5sp"
+                    android:layout_height="wrap_content" />
+                <TextView
+                    android:id="@+id/uploader_battery"
+                    android:textSize="12sp"
+                    android:text="Uploader: ---%"
+                    android:layout_width="wrap_content"
+                    android:textAlignment="center"
+                    android:textColor="#000000"
+                    android:paddingLeft="10sp"
+                    android:layout_height="wrap_content" />
+                <TextView
+                    android:id="@+id/uploader_xbattery"
+                    android:textSize="12sp"
+                    android:text="Bridge: ---%"
+                    android:layout_width="wrap_content"
+                    android:textAlignment="center"
+                    android:textColor="#000000"
+                    android:paddingLeft="10sp"
+                    android:layout_height="wrap_content" />
+                <TextView
+                    android:id="@+id/raw"
+                    android:textSize="12sp"
+                    android:text=""
+                    android:layout_width="wrap_content"
+                    android:textAlignment="center"
+                    android:textColor="#000000"
+                    android:paddingLeft="10sp"
+                    android:layout_height="wrap_content" />
+                <TextView
+                    android:id="@+id/externaltstatus"
+                    android:textSize="12sp"
+                    android:text="S: no status"
+                    android:layout_width="wrap_content"
+                    android:textAlignment="center"
+                    android:textColor="#000000"
+                    android:paddingLeft="10sp"
+                    android:layout_height="wrap_content" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+    <LinearLayout
+        android:orientation="horizontal"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAlignment="center"
+        android:layout_gravity="center_horizontal">
+        <TextView
+            android:id="@+id/watch_date"
+            android:textSize="14sp"
+            android:text="ddd mm/dd"
+            android:textColor="#FFFFFF"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:singleLine="false"
+            android:paddingEnd="5dp"
+            android:layout_gravity="center_horizontal|center_vertical"
+            android:gravity="bottom|start" />
+        <TextView
+            android:id="@+id/watch_time"
+            android:textSize="41sp"
+            android:text="12:00"
+            android:layout_centerHorizontal="true"
+            android:layout_centerVertical="true"
+            android:textColor="#FFFFFF"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAlignment="center"
+            android:layout_gravity="center_horizontal|top" />
+    </LinearLayout>
+
+    </LinearLayout>
+
+</RelativeLayout>
