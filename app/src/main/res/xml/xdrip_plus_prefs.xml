@@ -965,7 +965,7 @@
         android:summary="@string/automatic_updates_crash_reports_and_feedback"
         android:title="@string/xdrip_plus_update_settings">
         <SwitchPreference
-            android:defaultValue="true"
+            android:defaultValue="false"
             android:key="auto_update_download"
             android:summaryOff="New releases often have bugs fixed. It is recommended to switch on update notifications!"
             android:summaryOn="@string/get_notified_of_new_apk_releases"
