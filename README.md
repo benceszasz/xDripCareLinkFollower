@@ -40,7 +40,7 @@ Upload data to Nightscout using xDrip built-in Nightscout Sync feature:
       CareLink Connect app)
 
 ## How to use it
-- Download and install [latest release]((https://github.com/benceszasz/xDripCareLinkFollower/releases)) 
+- Download and install [latest release](https://github.com/benceszasz/xDripCareLinkFollower/releases)
 - Configure CareLink Follower:
   - Select CareLink Follower for data source
   - Set CareLink username, password and country
