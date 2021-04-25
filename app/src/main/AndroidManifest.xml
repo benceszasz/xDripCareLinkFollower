@@ -715,7 +715,7 @@
             android:foregroundServiceType="connectedDevice|location"
             />
         <service android:name=".cgm.sharefollow.ShareFollowService" />
-
+        <service android:name=".cgm.carelinkfollow.CareLinkFollowService" />
         <activity
             android:name=".EventLogActivity"
             android:configChanges="orientation|screenSize"
