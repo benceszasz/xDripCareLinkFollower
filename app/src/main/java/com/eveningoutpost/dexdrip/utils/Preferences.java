@@ -86,6 +86,7 @@ import com.eveningoutpost.dexdrip.UtilityModels.pebble.watchface.InstallPebbleTr
 import com.eveningoutpost.dexdrip.UtilityModels.pebble.watchface.InstallPebbleWatchFace;
 import com.eveningoutpost.dexdrip.WidgetUpdateService;
 import com.eveningoutpost.dexdrip.calibrations.PluggableCalibration;
+import com.eveningoutpost.dexdrip.cgm.carelinkfollow.CareLinkFollowService;
 import com.eveningoutpost.dexdrip.cgm.nsfollow.NightscoutFollow;
 import com.eveningoutpost.dexdrip.cgm.sharefollow.ShareFollowService;
 import com.eveningoutpost.dexdrip.insulin.inpen.InPenEntry;
@@ -1188,6 +1189,68 @@ public class Preferences extends BasePreferenceActivity implements SearchPrefere
             }
 
 
+            //CareLink Follow preferences
+            final Preference carelinkFollowUser = findPreference("clfollow_user");
+            final Preference carelinkFollowPass = findPreference("clfollow_pass");
+            final Preference carelinkFollowCountry = findPreference("clfollow_country");
+            final Preference carelinkFollowGracePeriod = findPreference("clfollow_grace_period");
+            final Preference carelinkFollowPollInterval = findPreference("clfollow_poll_interval");
+            final Preference carelinkFollowDownloadFingerBGs = findPreference("clfollow_download_finger_bgs");
+            final Preference carelinkFollowDownloadBoluses = findPreference("clfollow_download_boluses");
+            final Preference carelinkFollowDownloadMeals = findPreference("clfollow_download_meals");
+            final Preference carelinkFollowDownloadNotifications = findPreference("clfollow_download_notifications");
+            if (collectionType == DexCollectionType.CLFollow) {
+                //Add CL prefs
+                collectionCategory.addPreference(carelinkFollowUser);
+                collectionCategory.addPreference(carelinkFollowPass);
+                collectionCategory.addPreference(carelinkFollowCountry);
+                collectionCategory.addPreference(carelinkFollowGracePeriod);
+                collectionCategory.addPreference(carelinkFollowPollInterval);
+                collectionCategory.addPreference(carelinkFollowDownloadFingerBGs);
+                collectionCategory.addPreference(carelinkFollowDownloadBoluses);
+                collectionCategory.addPreference(carelinkFollowDownloadMeals);
+                collectionCategory.addPreference(carelinkFollowDownloadNotifications);
+                //Create prefChange handler
+                final Preference.OnPreferenceChangeListener carelinkFollowListener = new Preference.OnPreferenceChangeListener() {
+                    @Override
+                    public boolean onPreferenceChange(Preference preference, Object newValue) {
+                        CareLinkFollowService.resetInstanceAndInvalidateSession();
+                        CollectionServiceStarter.restartCollectionServiceBackground();
+                        return true;
+                    }
+                };
+                //Register prefChange handler
+                try {
+                    carelinkFollowUser.setOnPreferenceChangeListener(carelinkFollowListener);
+                    carelinkFollowPass.setOnPreferenceChangeListener(carelinkFollowListener);
+                    carelinkFollowCountry.setOnPreferenceChangeListener(carelinkFollowListener);
+                    carelinkFollowGracePeriod.setOnPreferenceChangeListener(carelinkFollowListener);
+                    carelinkFollowPollInterval.setOnPreferenceChangeListener(carelinkFollowListener);
+                    //carelinkFollowDownloadFingerBGs.setOnPreferenceChangeListener(carelinkFollowListener);
+                    //carelinkFollowDownloadBoluses.setOnPreferenceChangeListener(carelinkFollowListener);
+                    //carelinkFollowDownloadMeals.setOnPreferenceChangeListener(carelinkFollowListener);
+                    //carelinkFollowDownloadNotifications.setOnPreferenceChangeListener(carelinkFollowListener);
+                } catch (Exception e) {
+                    //
+                }
+                //Remove preferences
+            } else {
+                try {
+                    collectionCategory.removePreference(carelinkFollowUser);
+                    collectionCategory.removePreference(carelinkFollowPass);
+                    collectionCategory.removePreference(carelinkFollowCountry);
+                    collectionCategory.removePreference(carelinkFollowGracePeriod);
+                    collectionCategory.removePreference(carelinkFollowPollInterval);
+                    collectionCategory.removePreference(carelinkFollowDownloadFingerBGs);
+                    collectionCategory.removePreference(carelinkFollowDownloadBoluses);
+                    collectionCategory.removePreference(carelinkFollowDownloadMeals);
+                    collectionCategory.removePreference(carelinkFollowDownloadNotifications);
+                } catch (Exception e) {
+                    //
+                }
+            }
+
+
             final Preference inpen_enabled = findPreference("inpen_enabled");
             try {
                 inpen_enabled.setOnPreferenceChangeListener((preference, newValue) -> {
@@ -1508,6 +1571,22 @@ public class Preferences extends BasePreferenceActivity implements SearchPrefere
                 try {
                     collectionCategory.removePreference(nsFollowUrl);
                     collectionCategory.removePreference(nsFollowDownload);
+                } catch (Exception e) {
+                    //
+                }
+            }
+
+            if (collectionType != DexCollectionType.CLFollow) {
+                try {
+                    collectionCategory.removePreference(carelinkFollowCountry);
+                    collectionCategory.removePreference(carelinkFollowPass);
+                    collectionCategory.removePreference(carelinkFollowUser);
+                    collectionCategory.removePreference(carelinkFollowGracePeriod);
+                    collectionCategory.removePreference(carelinkFollowPollInterval);
+                    collectionCategory.removePreference(carelinkFollowDownloadFingerBGs);
+                    collectionCategory.removePreference(carelinkFollowDownloadBoluses);
+                    collectionCategory.removePreference(carelinkFollowDownloadMeals);
+                    collectionCategory.removePreference(carelinkFollowDownloadNotifications);
                 } catch (Exception e) {
                     //
                 }
