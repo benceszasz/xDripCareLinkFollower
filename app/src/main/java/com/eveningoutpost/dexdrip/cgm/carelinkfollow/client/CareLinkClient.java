@@ -93,7 +93,7 @@ public class CareLinkClient {
 
         // Force login to get basic info
         if(getAuthorizationToken() != null) {
-            if (CountryUtils.isUS(carelinkCountry) || sessionMonitorData.isBleX())
+            if (CountryUtils.isUS(carelinkCountry) || sessionMonitorData.isBle())
                 return this.getConnectDisplayMessage(this.sessionProfile.username, this.sessionUser.getUserRole(),
                         sessionCountrySettings.blePereodicDataEndpoint);
             else
