@@ -4,10 +4,17 @@
 Medtronic CareLink Follower data source for xDrip+ to retrieve data from Medtronic CareLink of online CGM and insulin pump device data uploads (Guardian Connect, MiniMed 7xxG) inside and outside of US. Originally it was started as a Medtronic Guardian Connect data source for xDrip+ as an alternative for the Nightscout MiniMed Connect, because Medtronic started to block requests from Heroku. Later it turned out that the core Nightscout MiniMed Connect logic can be also used for 7xxG pumps with some modifications based on the US online CareLink Connect webapp (770G is still working). The US data retrieval logic was also working outside the US with the 780G pumps too, although the online CareLink Connect webapp outside US doesn't support the new generation pumps. Finally the code was extended to handle the 7xxG devices too both inside and outside the US.
 
 I have created a separate repository containing only the communication
-with CareLink: [CareLinkClientJava](https://github.com/benceszasz/CareLinkClientJava)
+with CareLink:
+[CareLinkJavaClient](https://github.com/benceszasz/CareLinkJavaClient)
 
 ## Status
 The development is currently in a **very early stage!**
+
+## Supported devices
+- Medtronic Guardian Connect CGM
+- Medtronic MiniMed 770G pump
+- Medtronic MiniMed 780G pump
+- Other Medtronic MiniMed 7xxG pumps ???
 
 ## Features
 Download data from CareLink:
@@ -40,7 +47,8 @@ Upload data to Nightscout using xDrip built-in Nightscout Sync feature:
       CareLink Connect app)
 
 ## How to use it
-- Download and install [latest release]((https://github.com/benceszasz/xDripCareLinkFollower/releases)) 
+- Download and install
+  [latest release](https://github.com/benceszasz/xDripCareLinkFollower/releases)
 - Configure CareLink Follower:
   - Select CareLink Follower for data source
   - Set CareLink username, password and country
