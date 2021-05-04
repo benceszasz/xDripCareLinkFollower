@@ -9,6 +9,12 @@ with CareLink: [CareLinkJavaClient](https://github.com/benceszasz/CareLinkJavaCl
 ## Status
 The development is currently in a **very early stage!**
 
+## Supported devices
+- Medtronic Guardian Connect CGM
+- Medtronic MiniMed 770G pump
+- Medtronic MiniMed 780G pump
+- Other Medtronic MiniMed 7xxG pumps ???
+
 ## Features
 Download data from CareLink:
 - SG readings
