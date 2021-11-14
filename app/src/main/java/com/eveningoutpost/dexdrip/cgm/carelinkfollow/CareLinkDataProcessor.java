@@ -204,8 +204,8 @@ public class CareLinkDataProcessor {
             UserError.Log.d(TAG, "Recent data SGs is null!");
         }
 
-        // LAST ALARM -> NOTE
-        if(Pref.getBooleanDefaultFalse("clfollow_download_notifications")) {
+        // LAST GC ALARM = NOTE
+        if (Pref.getBooleanDefaultFalse("clfollow_download_notifications")) {
 
             // Only Guardian Connect, NGP has all in notifications
             if (recentData.isGM() && recentData.lastAlarm != null) {
