@@ -8,6 +8,7 @@ import com.eveningoutpost.dexdrip.Models.JoH;
 import com.eveningoutpost.dexdrip.Models.Sensor;
 import com.eveningoutpost.dexdrip.Models.Treatments;
 import com.eveningoutpost.dexdrip.Models.UserError;
+import com.eveningoutpost.dexdrip.R;
 import com.eveningoutpost.dexdrip.UtilityModels.Inevitable;
 import com.eveningoutpost.dexdrip.UtilityModels.Pref;
 import com.eveningoutpost.dexdrip.UtilityModels.PumpStatus;
@@ -18,6 +19,7 @@ import com.eveningoutpost.dexdrip.cgm.carelinkfollow.message.RecentData;
 import com.eveningoutpost.dexdrip.cgm.carelinkfollow.message.SensorGlucose;
 import com.eveningoutpost.dexdrip.cgm.carelinkfollow.message.TextMap;
 import com.eveningoutpost.dexdrip.wearintegration.ExternalStatusService;
+import com.eveningoutpost.dexdrip.xdrip;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -38,6 +40,10 @@ public class CareLinkDataProcessor {
     private static final String UUID_TAG_CARELINK_FOLLOW = "CF";
     private static final String SOURCE_CARELINK_FOLLOW = "CareLink Follow";
 
+
+    private static String gs(int id) {
+        return xdrip.getAppContext().getString(id);
+    }
 
     static synchronized void processRecentData(final RecentData recentData, final boolean live) {
 
@@ -62,27 +68,29 @@ public class CareLinkDataProcessor {
             PumpStatus.syncUpdate();
         }
 
-        //SENSOR STATUS INFO (External Status)
-        if(recentData.sensorState.equals("UNKNOWN")){
-            ExternalStatusService.update(JoH.tsl(), "?", true);
-        } else if(recentData.sensorState.equals(RecentData.SYSTEM_STATUS_SENSOR_OFF)) {
-            ExternalStatusService.update(JoH.tsl(), "-", true);
-        } else {
-            //Guardian Connect
-            if (recentData.isGM()) {
-                ExternalStatusService.update(JoH.tsl(),
-                        "Cal: " + String.format("%dh", recentData.timeToNextCalibHours)
-                                + " Remain: " + String.format("%dd%dh", recentData.sensorDurationHours / 24, recentData.sensorDurationHours % 24),
-                        true);
-                //Pump (NGP)
-            } else if (recentData.isNGP()) {
-                ExternalStatusService.update(JoH.tsl(),
-                        "Cal: " + String.format("%dh%dm", recentData.timeToNextCalibrationMinutes / 60, recentData.sensorDurationMinutes % 24)
-                                + " Remain: " + String.format("%dd%dh", recentData.sensorDurationHours / 24, recentData.sensorDurationHours % 24),
-                        true);
+        //EXTERNAL STATUS INFO (External Status)
+        try {
+            final StringBuilder sb = new StringBuilder();
+            if (recentData.sensorState.equals("UNKNOWN")) {
+                sb.append("?");
+            } else if (recentData.sensorState.equals(RecentData.SYSTEM_STATUS_SENSOR_OFF)) {
+                sb.append("-");
+            } else {
+                //Guardian Connect
+                if (recentData.isGM()) {
+                    sb.append("\u23F1" + String.format("%dh", recentData.timeToNextCalibHours) + " ");
+                    sb.append("\uD83D\uDCC5" + String.format("%dd%dh", recentData.sensorDurationHours / 24, recentData.sensorDurationHours % 24));
+                    //Pump (NGP)
+                } else if (recentData.isNGP()) {
+                    sb.append("\uD83D\uDD3A" + JoH.qs(recentData.maxAutoBasalRate, 3) + gs(R.string.insulin_unit) + " ");
+                    sb.append("\u23F1" + String.format("%dh%dm", recentData.timeToNextCalibrationMinutes / 60, recentData.sensorDurationMinutes % 24) + " ");
+                    sb.append("\uD83D\uDCC5" + String.format("%dd%dh", recentData.sensorDurationHours / 24, recentData.sensorDurationHours % 24));
+                }
             }
+            ExternalStatusService.update(JoH.tsl(), sb.toString(), true);
+        } catch (Exception ex) {
+            UserError.Log.d(TAG, "External status update error: " + ex.getMessage());
         }
-
 
         //SKIP DATA processing if NO PUMP CONNECTION (time shift seems to be different in this case, needs further analysis)
         if (recentData.isNGP() && !recentData.pumpCommunicationState) {
