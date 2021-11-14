@@ -291,8 +291,8 @@ public class CareLinkDataProcessor {
 
                     //BloodGlucose, Calibration => BloodTest
                     if (marker.isBloodGlucose() && Pref.getBooleanDefaultFalse("clfollow_download_finger_bgs")) {
-                        //check required valued
-                        if (marker.value != null) {
+                        //check required value
+                        if (marker.value != null && !marker.value.equals(0)) {
                             //new blood test
                             final BloodTest existingBloodTest = BloodTest.getForPreciseTimestamp(marker.dateTime.getTime(), 10000);
                             if (existingBloodTest == null) {

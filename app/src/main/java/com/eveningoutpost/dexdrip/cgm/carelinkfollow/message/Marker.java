@@ -21,13 +21,13 @@ public class Marker {
 
     public String type;
     public int index;
-    public Integer value;
+    public Double value;
     public String kind;
     public int version;
     public Date dateTime;
     public Integer relativeOffset;
     public Boolean calibrationSuccess;
-    public Integer amount;
+    public Double amount;
     public Float programmedExtendedAmount;
     public String activationType;
     public Float deliveredExtendedAmount;
