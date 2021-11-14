@@ -171,7 +171,7 @@
             android:summary="@string/summary_clfollow_grace_period"
             android:title="@string/title_clfollow_grace_period"/>
         <EditTextPreference
-            android:defaultValue="5"
+            android:defaultValue="1"
             android:inputType="number"
             android:key="clfollow_poll_interval"
             android:summary="@string/summary_clfollow_poll_interval"
