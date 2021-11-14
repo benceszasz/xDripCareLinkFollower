@@ -42,6 +42,7 @@ public class CareLinkDataProcessor {
     static synchronized void processRecentData(final RecentData recentData, final boolean live) {
 
         List<SensorGlucose> filteredSgList;
+        List<Marker> filteredMarkerList;
         String noteText;
 
         //SKIP ALL IF EMPTY!!!
@@ -49,10 +50,10 @@ public class CareLinkDataProcessor {
             return;
 
         //PUMP INFO (Pump Status)
-        if(recentData.isNGP()) {
+        if (recentData.isNGP()) {
             PumpStatus.setReservoir(recentData.reservoirRemainingUnits);
             PumpStatus.setBattery(recentData.medicalDeviceBatteryLevelPercent);
-            if(recentData.activeInsulin != null)
+            if (recentData.activeInsulin != null)
                 PumpStatus.setBolusIoB(recentData.activeInsulin.amount);
             PumpStatus.syncUpdate();
         }
@@ -200,7 +201,7 @@ public class CareLinkDataProcessor {
                     noteText = TextMap.getAlarmMessage(recentData.getDeviceFamily(), recentData.lastAlarm);
 
                     //New note
-                    if(newNote(noteText, recentData.lastAlarm.datetime.getTime())){
+                    if (newNote(noteText, recentData.lastAlarm.datetime.getTime())) {
 
                         Treatments alarm = Treatments.create_note(noteText, recentData.lastAlarm.datetime.getTime(), -1);
                         if (alarm == null) {
@@ -217,10 +218,48 @@ public class CareLinkDataProcessor {
         }
 
         //MARKERS -> TREATMENTS
-        if(recentData.markers != null) {
-            for (Marker marker : recentData.markers) {
+        //filter Markers
+        filteredMarkerList = new ArrayList<>();
+        for (Marker marker : recentData.markers) {
+            if (marker != null) {
+                if (marker.type != null) {
+                    //Try to determine correct date/time
+                    Date eventTime;
+                    try {
+                        if (marker.dateTime != null)
+                            eventTime = marker.dateTime;
+                        else
+                            eventTime = calcTimeByIndex(recentData.sLastSensorTime, marker.index, true);
+                    } catch (Exception ex) {
+                        UserError.Log.d(TAG, "Time calculation error!");
+                        continue;
+                    }
+                    if (eventTime == null) {
+                        UserError.Log.d(TAG, "Time calculation error!");
+                        continue;
+                    }
+                    marker.dateTime = eventTime;
+                    //Add filtered marker ith correct date/time
+                    filteredMarkerList.add(marker);
+                } else {
+                    //UserError.Log.d(TAG, "MarkerType is null!");
+                }
+            } else {
+                //UserError.Log.d(TAG, "Marker is null!");
+            }
+        }
+        //Sort markers (oldest first)
+        Collections.sort(filteredMarkerList, (o1, o2) -> o1.dateTime.compareTo(o2.dateTime));
+
+
+        //Process filtered markers
+        if(filteredMarkerList != null) {
+
+            //process markers one-by-one
+            for (Marker marker : filteredMarkerList) {
                 if (marker.type != null) {
 
+                    /*
                     //Event time
                     Date eventTime;
 
@@ -237,15 +276,16 @@ public class CareLinkDataProcessor {
                     if (eventTime == null) {
                         continue;
                     }
+                    */
 
                     //BloodGlucose, Calibration => BloodTest
                     if (marker.isBloodGlucose() && Pref.getBooleanDefaultFalse("clfollow_download_finger_bgs")) {
                         //check required valued
                         if (marker.value != null) {
                             //new blood test
-                            final BloodTest existingBloodTest = BloodTest.getForPreciseTimestamp(eventTime.getTime(), 10000);
+                            final BloodTest existingBloodTest = BloodTest.getForPreciseTimestamp(marker.dateTime.getTime(), 10000);
                             if (existingBloodTest == null) {
-                                final BloodTest bt = BloodTest.create(eventTime.getTime(), marker.value, SOURCE_CARELINK_FOLLOW);
+                                final BloodTest bt = BloodTest.create(marker.dateTime.getTime(), marker.value, SOURCE_CARELINK_FOLLOW);
                                 if (bt != null) {
                                     //    bt.saveit();
                                 }
@@ -260,23 +300,32 @@ public class CareLinkDataProcessor {
                         double carbs = 0;
                         double insulin = 0;
 
-                        //Extract treament infos
-                        if (marker.type.equals(Marker.MARKER_TYPE_INSULIN)) {
-                            carbs = 0;
-                            insulin = marker.deliveredExtendedAmount + marker.deliveredFastAmount;
-                        } else if (marker.type.equals(Marker.MARKER_TYPE_MEAL)) {
-                            carbs = marker.amount;
-                            insulin = 0;
-                        }
+                            //Extract treament infos (carbs, insulin)
+                            if (marker.type.equals(Marker.MARKER_TYPE_INSULIN)) {
+                                carbs = 0;
+                                if (marker.deliveredExtendedAmount != null && marker.deliveredFastAmount != null) {
+                                    insulin = marker.deliveredExtendedAmount + marker.deliveredFastAmount;
+                                }
+                                //SKIP if insulin = 0
+                                if (insulin == 0) continue;
+                            } else if (marker.type.equals(Marker.MARKER_TYPE_MEAL)) {
+                                if (marker.amount != null) {
+                                    carbs = marker.amount;
+                                }
+                                insulin = 0;
+                                //SKIP if carbs = 0
+                                if (carbs == 0) continue;
+                            }
 
-                        //new Treatment
-                        if (newTreatment(carbs, insulin, eventTime.getTime())) {
-                            t = Treatments.create(carbs, insulin, eventTime.getTime());
-                            if (t != null) {
-                                t.enteredBy = SOURCE_CARELINK_FOLLOW;
-                                t.save();
-                                if (Home.get_show_wear_treatments())
-                                    pushTreatmentSyncToWatch(t, true);
+                            //new Treatment
+                            if (newTreatment(carbs, insulin, marker.dateTime.getTime())) {
+                                t = Treatments.create(carbs, insulin, marker.dateTime.getTime());
+                                if (t != null) {
+                                    t.enteredBy = SOURCE_CARELINK_FOLLOW;
+                                    t.save();
+                                    if (Home.get_show_wear_treatments())
+                                        pushTreatmentSyncToWatch(t, true);
+                                }
                             }
                         }
                     }
@@ -286,7 +335,7 @@ public class CareLinkDataProcessor {
         }
 
         //NOTIFICATIONS -> NOTE
-        if(Pref.getBooleanDefaultFalse("clfollow_download_notifications")) {
+        if (Pref.getBooleanDefaultFalse("clfollow_download_notifications")) {
             if (recentData.notificationHistory != null) {
                 //Active Notifications
                 if (recentData.notificationHistory.activeNotifications != null) {
@@ -302,8 +351,8 @@ public class CareLinkDataProcessor {
                 }
             }
         }
-
     }
+
 
     protected static boolean addNotification(Date date, String deviceFamily, String messageId, int faultId){
 
