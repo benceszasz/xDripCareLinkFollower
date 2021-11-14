@@ -45,8 +45,11 @@ public class CareLinkDataProcessor {
         List<Marker> filteredMarkerList;
         String noteText;
 
+        UserError.Log.d(TAG, "Start processsing data...");
+
         //SKIP ALL IF EMPTY!!!
-        if(recentData == null)
+        if (recentData == null) {
+            UserError.Log.e(TAG, "Recent data is null, processing stopped!");
             return;
         }
 

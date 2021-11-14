@@ -135,16 +135,16 @@ public class CareLinkFollowDownloader {
                     UserError.Log.d(TAG, "Success call get data! Response code: " + carelinkClient.getLastResponseCode());
                     try {
                         if (recentData == null) {
-                            UserError.Log.d(TAG, "Recent Data is null!");
+                            UserError.Log.e(TAG, "Received recent data is empty, nothing to process!");
                             msg("Received data is empty!");
                         } else {
-                            if (D) UserError.Log.d(TAG, "Start process data");
+                            if (D) UserError.Log.d(TAG, "Calling data processor");
                             //Process CareLink data (conversion and update xDrip data)
                             CareLinkDataProcessor.processRecentData(recentData, true);
-                            if (D) UserError.Log.d(TAG, "ProcessData finished!");
+                            if (D) UserError.Log.d(TAG, "Data processor completed");
                             //Update Service status
                             CareLinkFollowService.updateBgReceiveDelay();
-                            if (D) UserError.Log.d(TAG, "UpdateBgReceiveDelay finished!");
+                            if (D) UserError.Log.d(TAG, "UpdateBgReceiveDelay finished");
                             msg(null);
                         }
                     } catch (Exception e) {
