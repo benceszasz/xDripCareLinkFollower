@@ -48,6 +48,7 @@ public class CareLinkDataProcessor {
         //SKIP ALL IF EMPTY!!!
         if(recentData == null)
             return;
+        }
 
         //PUMP INFO (Pump Status)
         if (recentData.isNGP()) {
@@ -80,9 +81,11 @@ public class CareLinkDataProcessor {
         }
 
 
-        //SKIP DATA processing if NO PUMP COMMUNICATION (time shift seems to be different in this case, needs further analysis)
-        if(recentData.isNGP() && !recentData.pumpCommunicationState)
+        //SKIP DATA processing if NO PUMP CONNECTION (time shift seems to be different in this case, needs further analysis)
+        if (recentData.isNGP() && !recentData.pumpCommunicationState) {
+            UserError.Log.d(TAG, "Not connected to pump => time can be wrong, leave processing!");
             return;
+        }
 
 
         //SENSOR GLUCOSE
