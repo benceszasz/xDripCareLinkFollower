@@ -8,6 +8,7 @@ import com.eveningoutpost.dexdrip.Models.JoH;
 import com.eveningoutpost.dexdrip.Models.Sensor;
 import com.eveningoutpost.dexdrip.Models.Treatments;
 import com.eveningoutpost.dexdrip.Models.UserError;
+import com.eveningoutpost.dexdrip.R;
 import com.eveningoutpost.dexdrip.UtilityModels.Inevitable;
 import com.eveningoutpost.dexdrip.UtilityModels.Pref;
 import com.eveningoutpost.dexdrip.UtilityModels.PumpStatus;
@@ -18,6 +19,7 @@ import com.eveningoutpost.dexdrip.cgm.carelinkfollow.message.RecentData;
 import com.eveningoutpost.dexdrip.cgm.carelinkfollow.message.SensorGlucose;
 import com.eveningoutpost.dexdrip.cgm.carelinkfollow.message.TextMap;
 import com.eveningoutpost.dexdrip.wearintegration.ExternalStatusService;
+import com.eveningoutpost.dexdrip.xdrip;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -39,49 +41,62 @@ public class CareLinkDataProcessor {
     private static final String SOURCE_CARELINK_FOLLOW = "CareLink Follow";
 
 
+    private static String gs(int id) {
+        return xdrip.getAppContext().getString(id);
+    }
+
     static synchronized void processRecentData(final RecentData recentData, final boolean live) {
 
         List<SensorGlucose> filteredSgList;
+        List<Marker> filteredMarkerList;
         String noteText;
 
+        UserError.Log.d(TAG, "Start processsing data...");
+
         //SKIP ALL IF EMPTY!!!
-        if(recentData == null)
+        if (recentData == null) {
+            UserError.Log.e(TAG, "Recent data is null, processing stopped!");
             return;
+        }
 
         //PUMP INFO (Pump Status)
-        if(recentData.isNGP()) {
+        if (recentData.isNGP()) {
             PumpStatus.setReservoir(recentData.reservoirRemainingUnits);
             PumpStatus.setBattery(recentData.medicalDeviceBatteryLevelPercent);
-            if(recentData.activeInsulin != null)
+            if (recentData.activeInsulin != null)
                 PumpStatus.setBolusIoB(recentData.activeInsulin.amount);
             PumpStatus.syncUpdate();
         }
 
-        //SENSOR STATUS INFO (External Status)
-        if(recentData.sensorState.equals("UNKNOWN")){
-            ExternalStatusService.update(JoH.tsl(), "?", true);
-        } else if(recentData.sensorState.equals(RecentData.SYSTEM_STATUS_SENSOR_OFF)) {
-            ExternalStatusService.update(JoH.tsl(), "-", true);
-        } else {
-            //Guardian Connect
-            if (recentData.isGM()) {
-                ExternalStatusService.update(JoH.tsl(),
-                        "Cal: " + String.format("%dh", recentData.timeToNextCalibHours)
-                                + " Remain: " + String.format("%dd%dh", recentData.sensorDurationHours / 24, recentData.sensorDurationHours % 24),
-                        true);
-                //Pump (NGP)
-            } else if (recentData.isNGP()) {
-                ExternalStatusService.update(JoH.tsl(),
-                        "Cal: " + String.format("%dh%dm", recentData.timeToNextCalibrationMinutes / 60, recentData.sensorDurationMinutes % 24)
-                                + " Remain: " + String.format("%dd%dh", recentData.sensorDurationHours / 24, recentData.sensorDurationHours % 24),
-                        true);
+        //EXTERNAL STATUS INFO (External Status)
+        try {
+            final StringBuilder sb = new StringBuilder();
+            if (recentData.sensorState.equals("UNKNOWN")) {
+                sb.append("?");
+            } else if (recentData.sensorState.equals(RecentData.SYSTEM_STATUS_SENSOR_OFF)) {
+                sb.append("-");
+            } else {
+                //Guardian Connect
+                if (recentData.isGM()) {
+                    sb.append("\u23F1" + String.format("%dh", recentData.timeToNextCalibHours) + " ");
+                    sb.append("\uD83D\uDCC5" + String.format("%dd%dh", recentData.sensorDurationHours / 24, recentData.sensorDurationHours % 24));
+                    //Pump (NGP)
+                } else if (recentData.isNGP()) {
+                    sb.append("\uD83D\uDD3A" + JoH.qs(recentData.maxAutoBasalRate, 3) + gs(R.string.insulin_unit) + " ");
+                    sb.append("\u23F1" + String.format("%dh%dm", recentData.timeToNextCalibrationMinutes / 60, recentData.sensorDurationMinutes % 24) + " ");
+                    sb.append("\uD83D\uDCC5" + String.format("%dd%dh", recentData.sensorDurationHours / 24, recentData.sensorDurationHours % 24));
+                }
             }
+            ExternalStatusService.update(JoH.tsl(), sb.toString(), true);
+        } catch (Exception ex) {
+            UserError.Log.d(TAG, "External status update error: " + ex.getMessage());
         }
 
-
-        //SKIP DATA processing if NO PUMP COMMUNICATION (time shift seems to be different in this case, needs further analysis)
-        if(recentData.isNGP() && !recentData.pumpCommunicationState)
+        //SKIP DATA processing if NO PUMP CONNECTION (time shift seems to be different in this case, needs further analysis)
+        if (recentData.isNGP() && !recentData.pumpCommunicationState) {
+            UserError.Log.d(TAG, "Not connected to pump => time can be wrong, leave processing!");
             return;
+        }
 
 
         //SENSOR GLUCOSE
@@ -130,46 +145,54 @@ public class CareLinkDataProcessor {
                         //Not EPOCH 0 (warmup?)
                         if (sg.datetime.getTime() > 1) {
 
-                            //Not 0 SG (not calibrated?)
-                            if (sg.sg > 0) {
+                            //Not in the FUTURE
+                            if (sg.datetime.getTime() < new Date().getTime() + 300_000) {
 
-                                final long recordTimestamp = sg.datetime.getTime();
+                                //Not 0 SG (not calibrated?)
+                                if (sg.sg != null && sg.sg > 0) {
 
-                                //newer than last BG
-                                if (recordTimestamp > lastBgTimestamp) {
+                                    final long recordTimestamp = sg.datetime.getTime();
 
-                                    if (recordTimestamp > 0) {
+                                    //newer than last BG
+                                    if (recordTimestamp > lastBgTimestamp) {
 
-                                        final BgReading existing = BgReading.getForPreciseTimestamp(recordTimestamp, 10_000);
-                                        if (existing == null) {
-                                            UserError.Log.d(TAG, "NEW NEW NEW New entry: " + sg.toS());
+                                        if (recordTimestamp > 0) {
 
-                                            if (live) {
-                                                final BgReading bg = new BgReading();
-                                                bg.timestamp = recordTimestamp;
-                                                bg.calculated_value = (double) sg.sg;
-                                                bg.raw_data = SPECIAL_FOLLOWER_PLACEHOLDER;
-                                                bg.filtered_data = (double) sg.sg;
-                                                bg.noise = "";
-                                                bg.uuid = UUID.randomUUID().toString();
-                                                bg.calculated_value_slope = 0;
-                                                bg.sensor = sensor;
-                                                bg.sensor_uuid = sensor.uuid;
-                                                bg.source_info = SOURCE_CARELINK_FOLLOW;
-                                                bg.save();
-                                                Inevitable.task("entry-proc-post-pr", 500, () -> bg.postProcess(false));
+                                            final BgReading existing = BgReading.getForPreciseTimestamp(recordTimestamp, 10_000);
+                                            if (existing == null) {
+                                                UserError.Log.d(TAG, "NEW NEW NEW New entry: " + sg.toS());
+
+                                                if (live) {
+                                                    final BgReading bg = new BgReading();
+                                                    bg.timestamp = recordTimestamp;
+                                                    bg.calculated_value = (double) sg.sg;
+                                                    bg.raw_data = SPECIAL_FOLLOWER_PLACEHOLDER;
+                                                    bg.filtered_data = (double) sg.sg;
+                                                    bg.noise = "";
+                                                    bg.uuid = UUID.randomUUID().toString();
+                                                    bg.calculated_value_slope = 0;
+                                                    bg.sensor = sensor;
+                                                    bg.sensor_uuid = sensor.uuid;
+                                                    bg.source_info = SOURCE_CARELINK_FOLLOW;
+                                                    bg.save();
+                                                    Inevitable.task("entry-proc-post-pr", 500, () -> bg.postProcess(false));
+                                                }
+                                            } else {
+                                                //existing entry, not needed
                                             }
                                         } else {
-                                            //existing entry, not needed
+                                            UserError.Log.e(TAG, "Could not parse a timestamp from: " + sg.toS());
                                         }
-                                    } else {
-                                        UserError.Log.e(TAG, "Could not parse a timestamp from: " + sg.toS());
+
                                     }
 
+                                } else {
+                                    //UserError.Log.d(TAG, "SG is 0 (calibration missed?)");
                                 }
 
+
                             } else {
-                                //UserError.Log.d(TAG, "SG is 0 (calibration missed?)");
+                                //UserError.Log.d(TAG, "SG is in the future!");
                             }
 
                         } else {
@@ -189,8 +212,8 @@ public class CareLinkDataProcessor {
             UserError.Log.d(TAG, "Recent data SGs is null!");
         }
 
-        // LAST ALARM -> NOTE
-        if(Pref.getBooleanDefaultFalse("clfollow_download_notifications")) {
+        // LAST GC ALARM = NOTE
+        if (Pref.getBooleanDefaultFalse("clfollow_download_notifications")) {
 
             // Only Guardian Connect, NGP has all in notifications
             if (recentData.isGM() && recentData.lastAlarm != null) {
@@ -200,7 +223,7 @@ public class CareLinkDataProcessor {
                     noteText = TextMap.getAlarmMessage(recentData.getDeviceFamily(), recentData.lastAlarm);
 
                     //New note
-                    if(newNote(noteText, recentData.lastAlarm.datetime.getTime())){
+                    if (newNote(noteText, recentData.lastAlarm.datetime.getTime())) {
 
                         Treatments alarm = Treatments.create_note(noteText, recentData.lastAlarm.datetime.getTime(), -1);
                         if (alarm == null) {
@@ -217,10 +240,48 @@ public class CareLinkDataProcessor {
         }
 
         //MARKERS -> TREATMENTS
-        if(recentData.markers != null) {
-            for (Marker marker : recentData.markers) {
+        //filter Markers
+        filteredMarkerList = new ArrayList<>();
+        for (Marker marker : recentData.markers) {
+            if (marker != null) {
+                if (marker.type != null) {
+                    //Try to determine correct date/time
+                    Date eventTime;
+                    try {
+                        if (marker.dateTime != null)
+                            eventTime = marker.dateTime;
+                        else
+                            eventTime = calcTimeByIndex(recentData.sLastSensorTime, marker.index, true);
+                    } catch (Exception ex) {
+                        UserError.Log.d(TAG, "Time calculation error!");
+                        continue;
+                    }
+                    if (eventTime == null) {
+                        UserError.Log.d(TAG, "Time calculation error!");
+                        continue;
+                    }
+                    marker.dateTime = eventTime;
+                    //Add filtered marker ith correct date/time
+                    filteredMarkerList.add(marker);
+                } else {
+                    //UserError.Log.d(TAG, "MarkerType is null!");
+                }
+            } else {
+                //UserError.Log.d(TAG, "Marker is null!");
+            }
+        }
+        //Sort markers (oldest first)
+        Collections.sort(filteredMarkerList, (o1, o2) -> o1.dateTime.compareTo(o2.dateTime));
+
+
+        //Process filtered markers
+        if(filteredMarkerList != null) {
+
+            //process markers one-by-one
+            for (Marker marker : filteredMarkerList) {
                 if (marker.type != null) {
 
+                    /*
                     //Event time
                     Date eventTime;
 
@@ -237,15 +298,16 @@ public class CareLinkDataProcessor {
                     if (eventTime == null) {
                         continue;
                     }
+                    */
 
                     //BloodGlucose, Calibration => BloodTest
                     if (marker.isBloodGlucose() && Pref.getBooleanDefaultFalse("clfollow_download_finger_bgs")) {
-                        //check required valued
-                        if (marker.value != null) {
+                        //check required value
+                        if (marker.value != null && !marker.value.equals(0)) {
                             //new blood test
-                            final BloodTest existingBloodTest = BloodTest.getForPreciseTimestamp(eventTime.getTime(), 10000);
+                            final BloodTest existingBloodTest = BloodTest.getForPreciseTimestamp(marker.dateTime.getTime(), 10000);
                             if (existingBloodTest == null) {
-                                final BloodTest bt = BloodTest.create(eventTime.getTime(), marker.value, SOURCE_CARELINK_FOLLOW);
+                                final BloodTest bt = BloodTest.create(marker.dateTime.getTime(), marker.value, SOURCE_CARELINK_FOLLOW);
                                 if (bt != null) {
                                     //    bt.saveit();
                                 }
@@ -256,27 +318,39 @@ public class CareLinkDataProcessor {
                     } else if ((marker.type.equals(Marker.MARKER_TYPE_INSULIN) && Pref.getBooleanDefaultFalse("clfollow_download_boluses"))
                             || (marker.type.equals(Marker.MARKER_TYPE_MEAL) && Pref.getBooleanDefaultFalse("clfollow_download_meals"))) {
 
-                        final Treatments t;
-                        double carbs = 0;
-                        double insulin = 0;
+                        //insulin, meal only for pumps (not value in case of GC)
+                        if (recentData.isNGP()) {
 
-                        //Extract treament infos
-                        if (marker.type.equals(Marker.MARKER_TYPE_INSULIN)) {
-                            carbs = 0;
-                            insulin = marker.deliveredExtendedAmount + marker.deliveredFastAmount;
-                        } else if (marker.type.equals(Marker.MARKER_TYPE_MEAL)) {
-                            carbs = marker.amount;
-                            insulin = 0;
-                        }
+                            final Treatments t;
+                            double carbs = 0;
+                            double insulin = 0;
 
-                        //new Treatment
-                        if (newTreatment(carbs, insulin, eventTime.getTime())) {
-                            t = Treatments.create(carbs, insulin, eventTime.getTime());
-                            if (t != null) {
-                                t.enteredBy = SOURCE_CARELINK_FOLLOW;
-                                t.save();
-                                if (Home.get_show_wear_treatments())
-                                    pushTreatmentSyncToWatch(t, true);
+                            //Extract treament infos (carbs, insulin)
+                            if (marker.type.equals(Marker.MARKER_TYPE_INSULIN)) {
+                                carbs = 0;
+                                if (marker.deliveredExtendedAmount != null && marker.deliveredFastAmount != null) {
+                                    insulin = marker.deliveredExtendedAmount + marker.deliveredFastAmount;
+                                }
+                                //SKIP if insulin = 0
+                                if (insulin == 0) continue;
+                            } else if (marker.type.equals(Marker.MARKER_TYPE_MEAL)) {
+                                if (marker.amount != null) {
+                                    carbs = marker.amount;
+                                }
+                                insulin = 0;
+                                //SKIP if carbs = 0
+                                if (carbs == 0) continue;
+                            }
+
+                            //new Treatment
+                            if (newTreatment(carbs, insulin, marker.dateTime.getTime())) {
+                                t = Treatments.create(carbs, insulin, marker.dateTime.getTime());
+                                if (t != null) {
+                                    t.enteredBy = SOURCE_CARELINK_FOLLOW;
+                                    t.save();
+                                    if (Home.get_show_wear_treatments())
+                                        pushTreatmentSyncToWatch(t, true);
+                                }
                             }
                         }
                     }
@@ -286,7 +360,7 @@ public class CareLinkDataProcessor {
         }
 
         //NOTIFICATIONS -> NOTE
-        if(Pref.getBooleanDefaultFalse("clfollow_download_notifications")) {
+        if (Pref.getBooleanDefaultFalse("clfollow_download_notifications")) {
             if (recentData.notificationHistory != null) {
                 //Active Notifications
                 if (recentData.notificationHistory.activeNotifications != null) {
@@ -302,8 +376,8 @@ public class CareLinkDataProcessor {
                 }
             }
         }
-
     }
+
 
     protected static boolean addNotification(Date date, String deviceFamily, String messageId, int faultId){
 

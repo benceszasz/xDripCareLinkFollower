@@ -1311,10 +1311,14 @@
     <string name="title_medtrum_use_native">Medtrum Native</string>
     <string name="summary_medtrum_a_hex">Hex diagnostic test value</string>
     <string name="title_medtrum_a_hex">Medtrum Debug</string>
+    <string name="insulin_unit">U</string>
     <string name="summary_nsfollow_url">Web address for following</string>
     <string name="title_nsfollow_url">Nightscout Follow URL</string>
     <string name="summary_nsfollow_download_treatments">Also download treatments from Nightscout as follower</string>
     <string name="title_nsfollow_download_treatments">Download Treatments</string>
+    <string name="clfollow_status_next_cal_short">Cal</string>
+    <string name="clfollow_status_remain_life_short">Remain</string>
+    <string name="clfollow_status_max_basal_short">MaxB</string>
     <string name="title_clfollow_user">CareLink Username</string>
     <string name="summary_clfollow_user">CareLink login username</string>
     <string name="title_clfollow_pass">CareLink Password</string>
