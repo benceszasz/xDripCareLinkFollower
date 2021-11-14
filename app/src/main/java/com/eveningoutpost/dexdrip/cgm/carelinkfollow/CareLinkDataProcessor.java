@@ -296,9 +296,12 @@ public class CareLinkDataProcessor {
                     } else if ((marker.type.equals(Marker.MARKER_TYPE_INSULIN) && Pref.getBooleanDefaultFalse("clfollow_download_boluses"))
                             || (marker.type.equals(Marker.MARKER_TYPE_MEAL) && Pref.getBooleanDefaultFalse("clfollow_download_meals"))) {
 
-                        final Treatments t;
-                        double carbs = 0;
-                        double insulin = 0;
+                        //insulin, meal only for pumps (not value in case of GC)
+                        if (recentData.isNGP()) {
+
+                            final Treatments t;
+                            double carbs = 0;
+                            double insulin = 0;
 
                             //Extract treament infos (carbs, insulin)
                             if (marker.type.equals(Marker.MARKER_TYPE_INSULIN)) {
