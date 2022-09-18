@@ -8,7 +8,8 @@ import java.util.regex.Pattern;
 public class SensorGlucose {
 
     public Integer sg;
-    public Date datetime;
+    public String datetime;
+    public Date datetimeAsDate;
     public boolean timeChange;
     public String kind;
     public int version;

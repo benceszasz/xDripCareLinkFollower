@@ -140,18 +140,18 @@ public class CareLinkDataProcessor {
                 if (sg != null) {
 
                     //Not NULL DATETIME (sensorchange?)
-                    if (sg.datetime != null) {
+                    if (sg.datetimeAsDate != null) {
 
                         //Not EPOCH 0 (warmup?)
-                        if (sg.datetime.getTime() > 1) {
+                        if (sg.datetimeAsDate.getTime() > 1) {
 
                             //Not in the FUTURE
-                            if (sg.datetime.getTime() < new Date().getTime() + 300_000) {
+                            if (sg.datetimeAsDate.getTime() < new Date().getTime() + 300_000) {
 
                                 //Not 0 SG (not calibrated?)
                                 if (sg.sg != null && sg.sg > 0) {
 
-                                    final long recordTimestamp = sg.datetime.getTime();
+                                    final long recordTimestamp = sg.datetimeAsDate.getTime();
 
                                     //newer than last BG
                                     if (recordTimestamp > lastBgTimestamp) {
@@ -251,7 +251,7 @@ public class CareLinkDataProcessor {
                         if (marker.dateTime != null)
                             eventTime = marker.dateTime;
                         else
-                            eventTime = calcTimeByIndex(recentData.sLastSensorTime, marker.index, true);
+                            eventTime = calcTimeByIndex(recentData.dLastSensorTime, marker.index, true);
                     } catch (Exception ex) {
                         UserError.Log.d(TAG, "Time calculation error!");
                         continue;
