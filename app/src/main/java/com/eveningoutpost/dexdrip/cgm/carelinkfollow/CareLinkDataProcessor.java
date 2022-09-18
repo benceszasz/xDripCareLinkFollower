@@ -132,7 +132,7 @@ public class CareLinkDataProcessor {
                 }
             }
             // place in order of oldest first
-            Collections.sort(filteredSgList, (o1, o2) -> o1.datetime.compareTo(o2.datetime));
+            Collections.sort(filteredSgList, (o1, o2) -> o1.datetimeAsDate.compareTo(o2.datetimeAsDate));
 
             for (final SensorGlucose sg : filteredSgList) {
 
