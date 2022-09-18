@@ -175,6 +175,7 @@ public class CareLinkDataProcessor {
                                                     bg.sensor_uuid = sensor.uuid;
                                                     bg.source_info = SOURCE_CARELINK_FOLLOW;
                                                     bg.save();
+                                                    bg.find_slope();
                                                     Inevitable.task("entry-proc-post-pr", 500, () -> bg.postProcess(false));
                                                 }
                                             } else {
