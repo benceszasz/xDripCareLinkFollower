@@ -219,68 +219,37 @@ public class CareLinkDataProcessor {
             }
         }
 
-        //MARKERS -> TREATMENTS
-        //filter Markers
-        filteredMarkerList = new ArrayList<>();
-        for (Marker marker : recentData.markers) {
-            if (marker != null) {
-                if (marker.type != null) {
-                    //Try to determine correct date/time
-                    Date eventTime;
-                    try {
-                        if (marker.dateTime != null)
-                            eventTime = marker.dateTime;
-                        else
-                            eventTime = calcTimeByIndex(recentData.dLastSensorTime, marker.index, true);
-                    } catch (Exception ex) {
-                        UserError.Log.d(TAG, "Time calculation error!");
-                        continue;
-                    }
-                    if (eventTime == null) {
-                        UserError.Log.d(TAG, "Time calculation error!");
-                        continue;
-                    }
-                    marker.dateTime = eventTime;
-                    //Add filtered marker ith correct date/time
+        //MARKERS (if available)
+        if (recentData.markers != null) {
+
+            //Filter markers
+            filteredMarkerList = new ArrayList<>();
+            for (Marker marker : recentData.markers) {
+                if (marker != null && marker.type != null && marker.dateTime != null) {
                     filteredMarkerList.add(marker);
-                } else {
-                    //UserError.Log.d(TAG, "MarkerType is null!");
                 }
-            } else {
-                //UserError.Log.d(TAG, "Marker is null!");
             }
-        }
-        //Sort markers (oldest first)
-        Collections.sort(filteredMarkerList, (o1, o2) -> o1.dateTime.compareTo(o2.dateTime));
 
+            //Process filtered markers
+            if (filteredMarkerList.size() > 0) {
+                //sort markers by time
+                Collections.sort(filteredMarkerList, (o1, o2) -> o1.dateTime.compareTo(o2.dateTime));
 
-        //Process filtered markers
-        if(filteredMarkerList != null) {
+                //last APStatus to store basal
+                UserError.Log.d(TAG, "Getting last APStatus");
+                APStatus lastAPStatus = APStatus.last();
+                long lastAPStatusTime;
+                if (lastAPStatus == null) {
+                    lastAPStatusTime = 0;
+                } else {
+                    lastAPStatusTime = lastAPStatus.timestamp;
+                }
+                UserError.Log.d(TAG, "Last APStatus time: " + String.valueOf(lastAPStatusTime));
 
-            //process markers one-by-one
-            for (Marker marker : filteredMarkerList) {
-                if (marker.type != null) {
+                //process markers one-by-one
+                for (Marker marker : filteredMarkerList) {
 
-                    /*
-                    //Event time
-                    Date eventTime;
-
-                    try {
-                        if (marker.dateTime != null)
-                            eventTime = marker.dateTime;
-                        else
-                            //eventTime = calcTimeByIndex(recentData.sLastSensorTime, marker.index);
-                            eventTime = calcTimeByIndex(recentData.sLastSensorTime, marker.index, true);
-                    } catch (Exception ex) {
-                        UserError.Log.d(TAG, "Time calculation error!");
-                        continue;
-                    }
-                    if (eventTime == null) {
-                        continue;
-                    }
-                    */
-
-                    //BloodGlucose, Calibration => BloodTest
+                    //FINGER BG
                     if (marker.isBloodGlucose() && Pref.getBooleanDefaultFalse("clfollow_download_finger_bgs")) {
                         //check required value
                         if (marker.value != null && !marker.value.equals(0)) {
@@ -294,7 +263,7 @@ public class CareLinkDataProcessor {
                             }
                         }
 
-                        //INSULIN, MEAL => Treatment
+                    //INSULIN, MEAL => Treatment
                     } else if ((marker.type.equals(Marker.MARKER_TYPE_INSULIN) && Pref.getBooleanDefaultFalse("clfollow_download_boluses"))
                             || (marker.type.equals(Marker.MARKER_TYPE_MEAL) && Pref.getBooleanDefaultFalse("clfollow_download_meals"))) {
 
@@ -336,8 +305,10 @@ public class CareLinkDataProcessor {
                     }
                 }
 
+                }
             }
         }
+
 
         //NOTIFICATIONS -> NOTE
         if (Pref.getBooleanDefaultFalse("clfollow_download_notifications")) {
