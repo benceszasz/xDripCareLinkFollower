@@ -13,6 +13,7 @@ import com.eveningoutpost.dexdrip.UtilityModels.Inevitable;
 import com.eveningoutpost.dexdrip.UtilityModels.Pref;
 import com.eveningoutpost.dexdrip.UtilityModels.PumpStatus;
 import com.eveningoutpost.dexdrip.cgm.carelinkfollow.message.ActiveNotification;
+import com.eveningoutpost.dexdrip.cgm.carelinkfollow.message.Alarm;
 import com.eveningoutpost.dexdrip.cgm.carelinkfollow.message.Marker;
 import com.eveningoutpost.dexdrip.cgm.carelinkfollow.message.ClearedNotification;
 import com.eveningoutpost.dexdrip.cgm.carelinkfollow.message.RecentData;
@@ -192,33 +193,6 @@ public class CareLinkDataProcessor {
 
         }
 
-        // LAST GC ALARM = NOTE
-        if (Pref.getBooleanDefaultFalse("clfollow_download_notifications")) {
-
-            // Only Guardian Connect, NGP has all in notifications
-            if (recentData.isGM() && recentData.lastAlarm != null) {
-
-                if (recentData.lastAlarm.datetime != null && recentData.lastAlarm.kind != null) {
-
-                    noteText = TextMap.getAlarmMessage(recentData.getDeviceFamily(), recentData.lastAlarm);
-
-                    //New note
-                    if (newNote(noteText, recentData.lastAlarm.datetime.getTime())) {
-
-                        Treatments alarm = Treatments.create_note(noteText, recentData.lastAlarm.datetime.getTime(), -1);
-                        if (alarm == null) {
-                            UserError.Log.d(TAG, "Create alarm baulked and returned null, so skipping");
-                        } else {
-                            alarm.enteredBy = SOURCE_CARELINK_FOLLOW;
-                            alarm.save();
-                            if (Home.get_show_wear_treatments())
-                                pushTreatmentSyncToWatch(alarm, true);
-                        }
-                    }
-                }
-            }
-        }
-
         //MARKERS (if available)
         if (recentData.markers != null) {
 
@@ -309,6 +283,16 @@ public class CareLinkDataProcessor {
             }
         }
 
+        // LAST ALARM -> NOTE (only for GC)
+        if (Pref.getBooleanDefaultFalse("clfollow_download_notifications")) {
+
+            // Only Guardian Connect, NGP has all in notifications
+            if (recentData.isGM() && recentData.lastAlarm != null) {
+                //Add notification from alarm
+                if (recentData.lastAlarm.datetime != null && recentData.lastAlarm.kind != null)
+                    addNotification(recentData.lastAlarm.datetime, recentData.getDeviceFamily(), recentData.lastAlarm);
+            }
+        }
 
         //NOTIFICATIONS -> NOTE
         if (Pref.getBooleanDefaultFalse("clfollow_download_notifications")) {
@@ -329,33 +313,43 @@ public class CareLinkDataProcessor {
         }
     }
 
-
+    //Create notification from CareLink messageId
     protected static boolean addNotification(Date date, String deviceFamily, String messageId, int faultId){
 
-        String noteText;
+        if(deviceFamily != null && messageId != null)
+            return addNotification(date, TextMap.getNotificationMessage(deviceFamily, messageId, faultId));
+        else
+            return false;
 
-        //Valid date
-        if(date != null) {
-            //Get text
-            noteText = TextMap.getNotificationMessage(deviceFamily, messageId, faultId);
-            if (noteText != null) {
-                //New note
-                if (newNote(noteText, date.getTime())) {
-                    //create_note in Treatment is not good, because of automatic link to other treatments in 5 mins range
-                    //Treatments note = Treatments.create_note(noteText, date.getTime(), -1);
-                    //if (note != null) {
-                    Treatments note = new Treatments();
-                    note.notes = noteText;
-                    note.timestamp = date.getTime();
-                    note.created_at = DateUtil.toISOString(note.timestamp);
-                    note.uuid = UUID.randomUUID().toString();
-                    note.enteredBy = SOURCE_CARELINK_FOLLOW;
-                    note.save();
-                    if (Home.get_show_wear_treatments())
-                        pushTreatmentSyncToWatch(note, true);
-                    return  true;
-                    //}
-                }
+    }
+
+    //Create notification from CareLink Alarm
+    protected static boolean addNotification(Date date, String deviceFamily, Alarm alarm){
+
+        if(deviceFamily != null && alarm != null && alarm.kind != null)
+            return addNotification(date, TextMap.getAlarmMessage(deviceFamily, alarm));
+        else
+            return false;
+
+    }
+
+    protected static boolean addNotification(Date date, String noteText){
+
+        //Valid date and text
+        if(date != null && noteText != null) {
+            //New note
+            if (newNote(noteText, date.getTime())) {
+                //create_note in Treatment is not good, because of automatic link to other treatments in 5 mins range
+                Treatments note = new Treatments();
+                note.notes = noteText;
+                note.timestamp = date.getTime();
+                note.created_at = DateUtil.toISOString(note.timestamp);
+                note.uuid = UUID.randomUUID().toString();
+                note.enteredBy = SOURCE_CARELINK_FOLLOW;
+                note.save();
+                if (Home.get_show_wear_treatments())
+                    pushTreatmentSyncToWatch(note, true);
+                return true;
             }
         }
 
@@ -392,55 +386,6 @@ public class CareLinkDataProcessor {
         return  true;
     }
 
-    protected static boolean newInsulin(double insulin, long timestamp){
 
-        List<Treatments> treatmentsList;
-        //Treatment with same timestamp and insulin exists?
-        treatmentsList = Treatments.listByTimestamp(timestamp);
-        if(treatmentsList != null) {
-            for (Treatments treatments : treatmentsList) {
-                if (treatments.insulin == insulin)
-                    return  false;
-            }
-        }
-        return  true;
-    }
-
-    protected static boolean newCarbs(double carbs, long timestamp){
-
-        List<Treatments> treatmentsList;
-
-        treatmentsList = Treatments.listByTimestamp(timestamp);
-
-        if(treatmentsList != null) {
-            for (Treatments treatments : treatmentsList) {
-                if (treatments.carbs == carbs)
-                    return  false;
-            }
-        }
-
-        return  true;
-    }
-
-
- /*
-    protected static Date calcTimeByIndex(Date lastSensorTime, int index){
-        if(lastSensorTime == null)
-            return null;
-        else
-            return new Date((lastSensorTime.getTime() - ((287 - index) * 300_000L)));
-    }
-
- */
-
-    protected static Date calcTimeByIndex(Date lastSensorTime, int index, boolean round){
-        if(lastSensorTime == null)
-            return null;
-        else if(round)
-            //round to 10 minutes
-            return new Date((Math.round((calcTimeByIndex(lastSensorTime,index,false).getTime()) / 600_000D) * 600_000L));
-        else
-            return new Date((lastSensorTime.getTime() - ((287 - index) * 300_000L)));
-    }
 
 }
