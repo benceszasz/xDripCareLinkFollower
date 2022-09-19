@@ -105,112 +105,91 @@ public class CareLinkDataProcessor {
             final BgReading lastBg = BgReading.lastNoSenssor();
             final long lastBgTimestamp = lastBg != null ? lastBg.timestamp : 0;
 
-            //UserError.Log.d(TAG, "Create Sensor");
-            final Sensor sensor = Sensor.createDefaultIfMissing();
-
-            //SENSOR
-            //Sensor status
-            //CHECK SENSOR & CONNECTION PRESENT
-            //sensor.latest_battery_level = connectData.medicalDeviceBatteryLevelPercent;
-            //sensor.latest_battery_level
-            //sensor.started_at
-            //sensor.uuid
-            sensor.save();
-
             //SENSOR GLUCOSE
             //filter SGs
             filteredSgList = new ArrayList<>();
             for (SensorGlucose sg : recentData.sgs) {
-                if (sg != null) {
-                    if (sg.datetime != null) {
-                        filteredSgList.add(sg);
-                    } else {
-                        //UserError.Log.d(TAG, "SG DateTime is null (sensor expired?)");
-                    }
-                } else {
-                    //UserError.Log.d(TAG, "SG Entry is null!!!");
+                if (sg != null && sg.datetime != null){
+                    filteredSgList.add(sg);
                 }
             }
-            // place in order of oldest first
-            Collections.sort(filteredSgList, (o1, o2) -> o1.datetimeAsDate.compareTo(o2.datetimeAsDate));
 
-            for (final SensorGlucose sg : filteredSgList) {
+            if(filteredSgList.size() > 0) {
 
-                //Not NULL SG (shouldn't happen?!)
-                if (sg != null) {
+                //UserError.Log.d(TAG, "Create Sensor");
+                final Sensor sensor = Sensor.createDefaultIfMissing();
 
-                    //Not NULL DATETIME (sensorchange?)
-                    if (sg.datetimeAsDate != null) {
+                //SENSOR
+                //Sensor status
+                //CHECK SENSOR & CONNECTION PRESENT
+                //sensor.latest_battery_level = connectData.medicalDeviceBatteryLevelPercent;
+                //sensor.latest_battery_level
+                //sensor.started_at
+                //sensor.uuid
+                sensor.save();
 
-                        //Not EPOCH 0 (warmup?)
-                        if (sg.datetimeAsDate.getTime() > 1) {
+                // place in order of oldest first
+                Collections.sort(filteredSgList, (o1, o2) -> o1.datetimeAsDate.compareTo(o2.datetimeAsDate));
 
-                            //Not in the FUTURE
-                            if (sg.datetimeAsDate.getTime() < new Date().getTime() + 300_000) {
+                for (final SensorGlucose sg : filteredSgList) {
 
-                                //Not 0 SG (not calibrated?)
-                                if (sg.sg != null && sg.sg > 0) {
+                    //Not EPOCH 0 (warmup?)
+                    if (sg.datetimeAsDate.getTime() > 1) {
 
-                                    final long recordTimestamp = sg.datetimeAsDate.getTime();
+                        //Not in the FUTURE
+                        if (sg.datetimeAsDate.getTime() < new Date().getTime() + 300_000) {
 
-                                    //newer than last BG
-                                    if (recordTimestamp > lastBgTimestamp) {
+                            //Not 0 SG (not calibrated?)
+                            if (sg.sg != null && sg.sg > 0) {
 
-                                        if (recordTimestamp > 0) {
+                                //newer than last BG
+                                if (sg.datetimeAsDate.getTime() > lastBgTimestamp) {
 
-                                            final BgReading existing = BgReading.getForPreciseTimestamp(recordTimestamp, 10_000);
-                                            if (existing == null) {
-                                                UserError.Log.d(TAG, "NEW NEW NEW New entry: " + sg.toS());
+                                    if (sg.datetimeAsDate.getTime() > 0) {
 
-                                                if (live) {
-                                                    final BgReading bg = new BgReading();
-                                                    bg.timestamp = recordTimestamp;
-                                                    bg.calculated_value = (double) sg.sg;
-                                                    bg.raw_data = SPECIAL_FOLLOWER_PLACEHOLDER;
-                                                    bg.filtered_data = (double) sg.sg;
-                                                    bg.noise = "";
-                                                    bg.uuid = UUID.randomUUID().toString();
-                                                    bg.calculated_value_slope = 0;
-                                                    bg.sensor = sensor;
-                                                    bg.sensor_uuid = sensor.uuid;
-                                                    bg.source_info = SOURCE_CARELINK_FOLLOW;
-                                                    bg.save();
-                                                    bg.find_slope();
-                                                    Inevitable.task("entry-proc-post-pr", 500, () -> bg.postProcess(false));
-                                                }
-                                            } else {
-                                                //existing entry, not needed
+                                        final BgReading existing = BgReading.getForPreciseTimestamp(sg.datetimeAsDate.getTime(), 10_000);
+                                        if (existing == null) {
+                                            UserError.Log.d(TAG, "NEW NEW NEW New entry: " + sg.toS());
+
+                                            if (live) {
+                                                final BgReading bg = new BgReading();
+                                                bg.timestamp = sg.datetimeAsDate.getTime();
+                                                bg.calculated_value = (double) sg.sg;
+                                                bg.raw_data = SPECIAL_FOLLOWER_PLACEHOLDER;
+                                                bg.filtered_data = (double) sg.sg;
+                                                bg.noise = "";
+                                                bg.uuid = UUID.randomUUID().toString();
+                                                bg.calculated_value_slope = 0;
+                                                bg.sensor = sensor;
+                                                bg.sensor_uuid = sensor.uuid;
+                                                bg.source_info = SOURCE_CARELINK_FOLLOW;
+                                                bg.save();
+                                                bg.find_slope();
+                                                Inevitable.task("entry-proc-post-pr", 500, () -> bg.postProcess(false));
                                             }
-                                        } else {
-                                            UserError.Log.e(TAG, "Could not parse a timestamp from: " + sg.toS());
                                         }
-
+                                    } else {
+                                        UserError.Log.e(TAG, "Could not parse a timestamp from: " + sg.toS());
                                     }
 
-                                } else {
-                                    //UserError.Log.d(TAG, "SG is 0 (calibration missed?)");
                                 }
 
-
                             } else {
-                                //UserError.Log.d(TAG, "SG is in the future!");
+                                UserError.Log.d(TAG, "SG is 0 (calibration missed?)");
                             }
 
+
                         } else {
-                            //UserError.Log.d(TAG, "SG DateTime is 0 (warmup phase?)");
+                            UserError.Log.d(TAG, "SG is in the future!");
                         }
 
                     } else {
-                        //UserError.Log.d(TAG, "SG DateTime is null (sensor expired?)");
+                        UserError.Log.d(TAG, "SG DateTime is 0 (warmup phase?)");
                     }
 
-                } else {
-                    //UserError.Log.d(TAG, "SG Entry is null!!!");
                 }
             }
 
-        } else {
-            UserError.Log.d(TAG, "Recent data SGs is null!");
         }
 
         // LAST GC ALARM = NOTE
