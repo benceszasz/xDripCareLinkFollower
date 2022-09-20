@@ -178,6 +178,14 @@ public class CareLinkClient {
         // Set login success if everything was ok:
         if(this.sessionUser != null && this.sessionProfile != null && this.sessionCountrySettings != null && this.sessionMonitorData != null)
             lastLoginSuccess = true;
+        //Clear cookies, session infos if error occured during login process
+        else {
+            ((SimpleOkHttpCookieJar) this.httpClient.cookieJar()).deleteAllCookies();
+            this.sessionUser = null;
+            this.sessionProfile = null;
+            this.sessionCountrySettings = null;
+            this.sessionMonitorData = null;
+        }
 
         return lastLoginSuccess;
 
@@ -261,6 +269,7 @@ public class CareLinkClient {
         // New token is needed:
         // a) no token or about to expire => execute authentication
         // b) last response 401
+        // c) last login failed after login process completed
         if (!((SimpleOkHttpCookieJar) httpClient.cookieJar()).contains(CARELINK_AUTH_TOKEN_COOKIE_NAME)
                 || !((SimpleOkHttpCookieJar) httpClient.cookieJar()).contains(CARELINK_TOKEN_VALIDTO_COOKIE_NAME)
                 || !((new Date(Date.parse(((SimpleOkHttpCookieJar) httpClient.cookieJar())
@@ -268,6 +277,7 @@ public class CareLinkClient {
                 .after(new Date(new Date(System.currentTimeMillis()).getTime()
                         + AUTH_EXPIRE_DEADLINE_MINUTES * 60000)))
                 || this.lastResponseCode == 401
+                || (!loginInProcess && !this.lastLoginSuccess)
         ) {
             //execute new login process
             if(this.loginInProcess || !this.executeLoginProcedure())
