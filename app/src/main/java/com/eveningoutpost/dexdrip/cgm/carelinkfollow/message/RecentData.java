@@ -31,6 +31,17 @@ public class RecentData {
     public static final String SYSTEM_STATUS_NO_ERROR_MESSAGE = "NO_ERROR_MESSAGE";
     public static final String SYSTEM_STATUS_CALIBRATION_REQUIRED = "CALIBRATION_REQUIRED";
 
+    //autoModeShieldState
+    public static final String AUTOMODE_SHIELD_AUTO_BASAL = "AUTO_BASAL";
+    public static final String AUTOMODE_SHIELD_FEATURE_OFF= "FEATURE_OFF";
+
+    //autoModeReadinessState
+    public static final String AUTOMODE_READINESS_NO_ACTION_REQUIRED = "NO_ACTION_REQUIRED";
+
+    //plgmLgsState
+    public static final String LGS_STATE_FEATURE_OFF = "FEATURE_OFF";
+    public static final String LGS_STATE_MONITORING = "MONITORING";
+
 
     public String getDeviceFamily(){
         return medicalDeviceFamily;
@@ -43,8 +54,10 @@ public class RecentData {
     }
 
     public long lastSensorTS;
-    public Date medicalDeviceTimeAsString;
-    public Date lastSensorTSAsString;
+    public String medicalDeviceTimeAsString;
+    public Date medicalDeviceTimeAsDate;
+    public String lastSensorTSAsString;
+    public Date lastSensorTSAsDate;
     public String kind;
     public int version;
     public String pumpModelNumber;
@@ -64,7 +77,8 @@ public class RecentData {
     public String sensorState;
     public String medicalDeviceSerialNumber;
     public long medicalDeviceTime;
-    public Date sMedicalDeviceTime;
+    public String sMedicalDeviceTime;
+    public Date dMedicalDeviceTime;
     public int reservoirLevelPercent;
     public int reservoirAmount;
     public float reservoirRemainingUnits;
@@ -75,7 +89,8 @@ public class RecentData {
     public String bgUnits;
     public String timeFormat;
     public long lastSensorTime;
-    public Date sLastSensorTime;
+    public String sLastSensorTime;
+    public Date dLastSensorTime;
     public boolean medicalDeviceSuspended;
     public String lastSGTrend;
     public SensorGlucose lastSG;
