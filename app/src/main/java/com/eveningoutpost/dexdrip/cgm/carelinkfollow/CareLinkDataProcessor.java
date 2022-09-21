@@ -209,17 +209,6 @@ public class CareLinkDataProcessor {
                 //sort markers by time
                 Collections.sort(filteredMarkerList, (o1, o2) -> o1.dateTime.compareTo(o2.dateTime));
 
-                //last APStatus to store basal
-                UserError.Log.d(TAG, "Getting last APStatus");
-                APStatus lastAPStatus = APStatus.last();
-                long lastAPStatusTime;
-                if (lastAPStatus == null) {
-                    lastAPStatusTime = 0;
-                } else {
-                    lastAPStatusTime = lastAPStatus.timestamp;
-                }
-                UserError.Log.d(TAG, "Last APStatus time: " + String.valueOf(lastAPStatusTime));
-
                 //process markers one-by-one
                 for (Marker marker : filteredMarkerList) {
 
@@ -276,8 +265,8 @@ public class CareLinkDataProcessor {
                                 }
                             }
                         }
+
                     }
-                }
 
                 }
             }
