@@ -47,6 +47,7 @@ android {
         animationsDisabled = true
         unitTests {
             includeAndroidResources = true
+            returnDefaultValues = true
         }
     }
 
@@ -71,7 +72,7 @@ android {
                     'proguard-rules.pro'
         }
     }
-    
+
     flavorDimensions "version"
     productFlavors {
         // When building a variant that uses this flavor, the following configurations
@@ -116,12 +117,12 @@ dependencies {
     implementation 'com.squareup.wire:wire-runtime:2.2.0'
     //implementation 'com.ustwo.android:clockwise-wearable:1.0.2'
     implementation(name: 'ustwo-clockwise-debug', ext: 'aar')
-    implementation 'me.denley.wearpreferenceactivity:wearpreferenceactivity:0.5.0'
+    implementation(name: 'wearpreferenceactivity-0.5.0', ext: 'aar')
     implementation 'com.google.code.gson:gson:2.8.6'
 
     implementation 'com.tananaev:adblib:1.3'
 
-    implementation 'com.activeandroid:thread-safe-active-android:3.1.1'
+    implementation(name: 'thread-safe-active-android-3.1.1', ext: 'aar')
     implementation 'com.google.guava:guava:24.1-jre'
     implementation 'io.reactivex:rxjava:1.3.3'
     implementation 'com.polidea.rxandroidble2:rxandroidble:1.12.1'
