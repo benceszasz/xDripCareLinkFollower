@@ -165,6 +165,14 @@
             android:summary="@string/summary_clfollow_country"
             android:title="@string/title_clfollow_country" />
         <EditTextPreference
+            android:defaultValue=""
+            android:inputType="textNoSuggestions|textVisiblePassword"
+            android:key="clfollow_patient"
+            android:maxLines="1"
+            android:singleLine="true"
+            android:summary="@string/summary_clfollow_patient"
+            android:title="@string/title_clfollow_patient" />
+        <EditTextPreference
             android:defaultValue="30"
             android:inputType="number"
             android:key="clfollow_grace_period"

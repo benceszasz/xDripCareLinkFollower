@@ -1,0 +1,14 @@
+package com.eveningoutpost.dexdrip.cgm.carelinkfollow.message;
+
+public class Patient {
+
+    public String firstName;
+    public String lastName;
+    public String status;
+    public String username;
+    public boolean notificationsAllowed;
+    public String nickname;
+    public String lastDeviceFamily;
+    public boolean patientUsesConnect;
+
+}
