@@ -1,20 +1,15 @@
 # xDrip+ CareLink Follower
 > Experimental Medtronic CareLink Follower data source for xDrip+
 
-Medtronic CareLink Follower data source for xDrip+ to retrieve data from Medtronic CareLink of online CGM and insulin pump device data uploads (Guardian Connect CGM and MiniMed 7xxG insulin pumps) inside and outside of US.
+Medtronic CareLink Follower data source for xDrip+ to retrieve data from Medtronic CareLink of online standalone CGM and insulin pump device data uploads (Guardian CGM and MiniMed 7xxG insulin pumps) inside and outside of US.
 
 There is also a separate repository containing only the communication
 with CareLink in Java:
 [CareLinkJavaClient](https://github.com/benceszasz/CareLinkJavaClient)
 
-## Status
-The development is currently in a **very early stage!**
-
 ## Supported devices
-- Medtronic Guardian Connect CGM
-- Medtronic MiniMed 770G insulin pump
-- Medtronic MiniMed 780G insulin pump
-- Other Medtronic MiniMed 7xxG insulin pumps ???
+- Medtronic standalone CGMs (Guardian Connect (Enlite, Guardian 3) and Guardian (Guardian 4)) 
+- Medtronic MiniMed 7XXG insulin pumps (740G, 770G, 780G)
 
 ## Features
 Download from CareLink and display in xDrip:
@@ -37,23 +32,18 @@ Upload to Nightscout using xDrip built-in Nightscout Sync feature:
 ## Limitations
 - **CareLink MFA is not supported!!!**
 - Notification texts are currently always in English
-- Treatments of Guardian Connect are not supported in xDrip, because
+- Treatments of Guardian Connect and Guardian apps are not supported in xDrip, because
   these are just simple markers for CareLink followers, required details
   are missing (no insulin amount, no carb amount)
 
 ## Requirements
-- Suitable CareLink account **with MFA DISABLED**:
-    - Guardian Connect CGM outside US: patient or care partner account
-    - Guardian Connect CGM inside US: **not tested yet!** (possibly a care partner account)
-    - 7xxG pump outside US: care partner account (same as for Medtronic CareLink Connect app)
-  -   7xxG pump inside US: care partner account (same as for Medtronic
-      CareLink Connect app)
+- CareLink Patient or Care Partner account **with MFA DISABLED**
 
 ## How to use it
 - Download and install [latest release](https://github.com/benceszasz/xDripCareLinkFollower/releases)
 - Configure CareLink Follower:
   - Select CareLink Follower for data source
-  - Set CareLink country, username and password
+  - Set CareLink country, username, password and patient username if using a care partner account with multiple patients
   - Select required data types: Finger BGs, Boluses, Meals,
     Notifications
   - If needed change grace period (wait after last sensor + 5 mins)
