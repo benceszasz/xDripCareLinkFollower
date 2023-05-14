@@ -1,5 +1,6 @@
 package com.eveningoutpost.dexdrip.cgm.carelinkfollow.client;
 
+import com.eveningoutpost.dexdrip.Models.JoH;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
@@ -119,48 +120,61 @@ public class CareLinkClient {
     public RecentData getRecentData(String patientUsername) {
 
         // Force login to get basic info
-        if (getAuthorizationToken() != null) {
-            // M2M
-            if (this.sessionM2MEnabled)
-                // Care Partner
-                if(this.sessionUser.isCarePartner())
-                    return this.getM2MPatientData(patientUsername);
-                // Patient
-                else
-                    // 7xxG
-                    if(sessionMonitorData.isBle())
-                        return this.getConnectDisplayMessage(this.sessionProfile.username, this.sessionUser.getUserRole(),
-                                sessionCountrySettings.blePereodicDataEndpoint);
-                    // Standalone CGM
-                    else
-                        return this.getLast24Hours();
-            // Non M2M (old logic)
-            else if (sessionMonitorData.isBle())
-                return this.getConnectDisplayMessage(this.sessionProfile.username, this.sessionUser.getUserRole(),
-                        sessionCountrySettings.blePereodicDataEndpoint);
-            else
-                return this.getLast24Hours();
-        } else {
+        if (getAuthorizationToken() == null)
             return null;
-        }
+
+        // 7xxG
+        if (this.isBleDevice(patientUsername))
+            return this.getConnectDisplayMessage(this.sessionProfile.username, this.sessionUser.getUserRole(), patientUsername,
+                    sessionCountrySettings.blePereodicDataEndpoint);
+            // Guardian + multi
+        else if (this.sessionM2MEnabled)
+            return this.getM2MPatientData(patientUsername);
+            // Guardian + single
+        else
+            return this.getLast24Hours();
 
     }
 
     public String getDefaultPatientUsername() {
+
         // Force login to get basic info
-        if (getAuthorizationToken() != null) {
-            if (this.sessionUser != null)
-                if (this.sessionUser.isCarePartner())
-                    if (this.sessionPatients != null && this.sessionPatients.length > 0)
-                        return this.sessionPatients[0].username;
-                    else
-                        return null;
-                else
-                    return this.sessionProfile.username;
+        if (getAuthorizationToken() == null)
+            return null;
+
+        // Care Partner + multi follow => first patient
+        if (this.sessionUser.isCarePartner() && this.sessionM2MEnabled)
+            if (this.sessionPatients != null && this.sessionPatients.length > 0)
+                return this.sessionPatients[0].username;
             else
                 return null;
-        } else
+        // Not care partner or no multi follow => username from session profile
+        else if (this.sessionProfile.username != null)
+            return this.sessionProfile.username;
+        else
             return null;
+    }
+
+    public boolean isBleDevice(String patientUsername){
+
+
+        // Force login to get basic info
+        if(getAuthorizationToken() == null)
+            return  false;
+
+        if(this.sessionM2MEnabled && this.sessionUser.isCarePartner())
+            if(patientUsername == null || this.sessionPatients == null)
+                return false;
+            else {
+                for (int i = 0; i < this.sessionPatients.length; i++) {
+                    if (sessionPatients[i].username.equals(patientUsername))
+                        return sessionPatients[i].isBle();
+                }
+                return false;
+            }
+        else
+            return this.sessionMonitorData.isBle();
+
     }
 
     // Get CareLink server address
@@ -206,10 +220,10 @@ public class CareLinkClient {
             this.sessionProfile = this.getMyProfile();
             this.sessionCountrySettings = this.getMyCountrySettings();
             this.sessionM2MEnabled = this.getM2MEnabled().value;
-            //Care Partner + multi follow => patients
-            if(this.sessionUser.isCarePartner() && this.sessionM2MEnabled)
+            // Multi follow + Care Partner => patients
+            if(this.sessionM2MEnabled && this.sessionUser.isCarePartner())
                 this.sessionPatients = this.getM2MPatients();
-            //Patient or Care Partner & not multi follow => monitor data
+            // Single follow and/or Patient => monitor data
             else
                 this.sessionMonitorData = this.getMonitorData();
 
@@ -221,8 +235,9 @@ public class CareLinkClient {
         }
 
         // Set login success if everything was ok:
-        if(this.sessionUser != null && this.sessionProfile != null && this.sessionCountrySettings != null && this.sessionM2MEnabled != null
-                && ((this.sessionM2MEnabled && this.sessionUser.isCarePartner() && this.sessionPatients != null) || this.sessionMonitorData != null))
+        if(this.sessionUser != null && this.sessionProfile != null && this.sessionCountrySettings != null && this.sessionM2MEnabled != null &&
+                (((!this.sessionM2MEnabled || !this.sessionUser.isCarePartner()) && this.sessionMonitorData != null) ||
+                        (this.sessionM2MEnabled && this.sessionUser.isCarePartner() && this.sessionPatients != null)))
             lastLoginSuccess = true;
         //Clear cookies, session infos if error occured during login process
         else {
@@ -408,7 +423,7 @@ public class CareLinkClient {
     }
 
     // Periodic data from CareLink Cloud
-    public RecentData getConnectDisplayMessage(String username, String role, String endpointUrl) {
+    public RecentData getConnectDisplayMessage(String username, String role, String patientUsername, String endpointUrl) {
 
         RequestBody requestBody = null;
         Gson gson = null;
@@ -419,6 +434,8 @@ public class CareLinkClient {
         userJson = new JsonObject();
         userJson.addProperty("username", username);
         userJson.addProperty("role", role);
+        if(!JoH.emptyString(patientUsername))
+            userJson.addProperty("patientId", patientUsername);
 
         gson = new GsonBuilder().create();
 

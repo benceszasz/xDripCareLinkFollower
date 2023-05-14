@@ -11,4 +11,8 @@ public class Patient {
     public String lastDeviceFamily;
     public boolean patientUsesConnect;
 
+    public boolean isBle() {
+        return lastDeviceFamily.contains("BLE");
+    }
+
 }
