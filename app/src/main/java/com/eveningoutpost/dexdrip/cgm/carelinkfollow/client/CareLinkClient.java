@@ -122,7 +122,18 @@ public class CareLinkClient {
         if (getAuthorizationToken() != null) {
             // M2M
             if (this.sessionM2MEnabled)
-                return this.getM2MPatientData(patientUsername);
+                // Care Partner
+                if(this.sessionUser.isCarePartner())
+                    return this.getM2MPatientData(patientUsername);
+                // Patient
+                else
+                    // 7xxG
+                    if(sessionMonitorData.isBle())
+                        return this.getConnectDisplayMessage(this.sessionProfile.username, this.sessionUser.getUserRole(),
+                                sessionCountrySettings.blePereodicDataEndpoint);
+                    // Standalone CGM
+                    else
+                        return this.getLast24Hours();
             // Non M2M (old logic)
             else if (sessionMonitorData.isBle())
                 return this.getConnectDisplayMessage(this.sessionProfile.username, this.sessionUser.getUserRole(),
@@ -172,14 +183,8 @@ public class CareLinkClient {
         lastErrorMessage = "";
 
         try {
-            // Clear cookies
-            ((SimpleOkHttpCookieJar) this.httpClient.cookieJar()).deleteAllCookies();
-
             // Clear basic infos
-            this.sessionUser = null;
-            this.sessionProfile = null;
-            this.sessionCountrySettings = null;
-            this.sessionMonitorData = null;
+            this.clearSessionInfos();
 
             // Open login (get SessionId and SessionData)
             loginSessionResponse = this.getLoginSession();
@@ -201,10 +206,12 @@ public class CareLinkClient {
             this.sessionProfile = this.getMyProfile();
             this.sessionCountrySettings = this.getMyCountrySettings();
             this.sessionM2MEnabled = this.getM2MEnabled().value;
-            if(!this.sessionM2MEnabled)
-                this.sessionMonitorData = this.getMonitorData();
+            //Care Partner + multi follow => patients
             if(this.sessionUser.isCarePartner() && this.sessionM2MEnabled)
                 this.sessionPatients = this.getM2MPatients();
+            //Patient or Care Partner & not multi follow => monitor data
+            else
+                this.sessionMonitorData = this.getMonitorData();
 
         } catch (Exception e) {
             lastErrorMessage = e.getClass().getSimpleName() + ":" + e.getMessage();
@@ -215,20 +222,25 @@ public class CareLinkClient {
 
         // Set login success if everything was ok:
         if(this.sessionUser != null && this.sessionProfile != null && this.sessionCountrySettings != null && this.sessionM2MEnabled != null
-                && (this.sessionM2MEnabled || this.sessionMonitorData != null))
+                && ((this.sessionM2MEnabled && this.sessionUser.isCarePartner() && this.sessionPatients != null) || this.sessionMonitorData != null))
             lastLoginSuccess = true;
         //Clear cookies, session infos if error occured during login process
         else {
-            ((SimpleOkHttpCookieJar) this.httpClient.cookieJar()).deleteAllCookies();
-            this.sessionUser = null;
-            this.sessionProfile = null;
-            this.sessionCountrySettings = null;
-            this.sessionMonitorData = null;
-            this.sessionPatients = null;
+            this.clearSessionInfos();
         }
 
         return lastLoginSuccess;
 
+    }
+
+    protected void clearSessionInfos()
+    {
+        ((SimpleOkHttpCookieJar) this.httpClient.cookieJar()).deleteAllCookies();
+        this.sessionUser = null;
+        this.sessionProfile = null;
+        this.sessionCountrySettings = null;
+        this.sessionMonitorData = null;
+        this.sessionPatients = null;
     }
 
     protected Response getLoginSession() throws IOException {
