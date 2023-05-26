@@ -53,6 +53,14 @@ public class CareLinkClient {
     public CountrySettings getSessionCountrySettings() {
         return sessionCountrySettings;
     }
+    protected RecentUploads sessionRecentUploads;
+    public RecentUploads getSessionRecentUploads() {
+        return sessionRecentUploads;
+    }
+    protected Boolean sessionDeviceIsBle;
+    public Boolean getSessionDeviceIsBle() {
+        return sessionDeviceIsBle;
+    }
     protected Boolean sessionM2MEnabled;
     public boolean getSessionM2MEnabled(){
         return sessionM2MEnabled;
@@ -157,10 +165,24 @@ public class CareLinkClient {
 
     public boolean isBleDevice(String patientUsername){
 
+        Boolean recentUploadBle;
+
+        // Session device already determined
+        if(sessionDeviceIsBle != null)
+            return sessionDeviceIsBle;
 
         // Force login to get basic info
         if(getAuthorizationToken() == null)
             return  false;
+
+        // Determine session device by recent uploads
+        if(!this.sessionUser.isCarePartner()){
+            recentUploadBle = this.isRecentUploadBle();
+            if(recentUploadBle != null){
+                this.sessionDeviceIsBle = recentUploadBle;
+                return sessionDeviceIsBle;
+            }
+        }
 
         if(this.sessionM2MEnabled && this.sessionUser.isCarePartner())
             if(patientUsername == null || this.sessionPatients == null)
@@ -175,6 +197,20 @@ public class CareLinkClient {
         else
             return this.sessionMonitorData.isBle();
 
+    }
+
+    public Boolean isRecentUploadBle(){
+
+        if(this.sessionRecentUploads == null)
+            return null;
+
+        for(DataUpload upload : this.sessionRecentUploads.recentUploads){
+            if(upload.device.toUpperCase().contains("MINIMED"))
+                return  true;
+            else if(upload.device.toUpperCase().contains("GUARDIAN"))
+                return  false;
+        }
+        return null;
     }
 
     // Get CareLink server address
@@ -215,10 +251,16 @@ public class CareLinkClient {
             this.lastResponseCode = consentResponse.code();
             consentResponse.close();
 
-            // Get basic infos
+            // Get required sessions infos
+            // User
             this.sessionUser = this.getMyUser();
+            // Profile
             this.sessionProfile = this.getMyProfile();
+            // Country settings
             this.sessionCountrySettings = this.getMyCountrySettings();
+            // Recent uploads (only for patients)
+            if(!this.sessionUser.isCarePartner())
+                this.sessionRecentUploads = this.getRecentUploads(30);
             this.sessionM2MEnabled = this.getM2MEnabled().value;
             // Multi follow + Care Partner => patients
             if(this.sessionM2MEnabled && this.sessionUser.isCarePartner())
@@ -368,6 +410,17 @@ public class CareLinkClient {
     // My profile
     public Profile getMyProfile() {
         return this.getData(this.careLinkServer(), "patient/users/me/profile", null, null, Profile.class);
+    }
+
+    // Recent uploads
+    public RecentUploads getRecentUploads(int numOfUploads) {
+
+        Map<String, String> queryParams = null;
+
+        queryParams = new HashMap<String, String>();
+        queryParams.put("numUploads", String.valueOf(numOfUploads));
+
+        return this.getData(this.careLinkServer(), "patient/dataUpload/recentUploads", queryParams, null, RecentUploads.class);
     }
 
     // Monitoring data
@@ -609,8 +662,15 @@ public class CareLinkClient {
                 timezoneMissing = true;
 
                 //offset = this.getZonedDate(recentData.lastSG.datetime).getOffset();
-                offsetString = this.getZoneOffset(recentData.lastSG.datetime);
+                //Try get TZ offset string: lastSG or lastAlarm
+                if(recentData.lastSG != null && recentData.lastSG.datetime != null)
+                    offsetString = this.getZoneOffset(recentData.lastSG.datetime);
+                else
+                    offsetString = this.getZoneOffset(recentData.lastAlarm.datetime);
 
+
+                if(recentData.lastAlarm != null && recentData.lastAlarm.datetime != null)
+                    recentData.lastAlarm.datetimeAsDate = parseDateString(recentData.lastAlarm.datetime);
                 //Build correct dates with timezone
                 recentData.sMedicalDeviceTime = recentData.sMedicalDeviceTime + offsetString;
                 recentData.medicalDeviceTimeAsString = recentData.medicalDeviceTimeAsString + offsetString;
