@@ -333,7 +333,7 @@ public class CareLinkClient {
                 .add("actionButton", "Log in")
                 .build();
 
-        url = new HttpUrl.Builder().scheme("https").host("mdtlogin.medtronic.com")
+        url = new HttpUrl.Builder().scheme("https").host("mdtlogin-ocl.medtronic.com")
                 .addPathSegments("mmcl/auth/oauth/v2/authorize/login").addQueryParameter("locale", CARELINK_LOCALE_EN)
                 .addQueryParameter("country", this.carelinkCountry).build();
 
