@@ -326,18 +326,24 @@ public class CareLinkClient {
         form = new FormBody.Builder()
                 .add("sessionID", loginSessionResponse.request().url().queryParameter("sessionID"))
                 .add("sessionData", loginSessionResponse.request().url().queryParameter("sessionData"))
-                .add("locale", CARELINK_LOCALE_EN)
+                .add("locale", loginSessionResponse.request().url().queryParameter("locale"))
                 .add("action", "login")
                 .add("username", this.carelinkUsername)
                 .add("password", this.carelinkPassword)
                 .add("actionButton", "Log in")
                 .build();
 
-        url = new HttpUrl.Builder().scheme("https").host("mdtlogin-ocl.medtronic.com")
-                .addPathSegments("mmcl/auth/oauth/v2/authorize/login").addQueryParameter("locale", CARELINK_LOCALE_EN)
-                .addQueryParameter("country", this.carelinkCountry).build();
+        url = new HttpUrl.Builder()
+                .scheme(loginSessionResponse.request().url().scheme())
+                .host(loginSessionResponse.request().url().host())
+                .addPathSegments(loginSessionResponse.request().url().encodedPath().substring(1))
+                .addQueryParameter("locale", loginSessionResponse.request().url().queryParameter("locale"))
+                .addQueryParameter("country", loginSessionResponse.request().url().queryParameter("countrycode"))
+                .build();
 
-        requestBuilder = new Request.Builder().url(url).post(form);
+        requestBuilder = new Request.Builder()
+                .url(url)
+                .post(form);
 
         this.addHttpHeaders(requestBuilder, RequestType.HtmlGet);
 
