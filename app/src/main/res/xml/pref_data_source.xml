@@ -140,7 +140,7 @@
             android:summary="Login password for Dex Share Following"
             android:title="Share Password" />
 
-
+        <!--
         <EditTextPreference
             android:defaultValue=""
             android:inputType="textNoSuggestions|textVisiblePassword"
@@ -157,6 +157,7 @@
             android:singleLine="true"
             android:summary="@string/summary_clfollow_pass"
             android:title="@string/title_clfollow_pass" />
+        -->
         <ListPreference
             android:defaultValue="gb"
             android:entries="@array/carelinkCountryEntries"
@@ -172,6 +173,11 @@
             android:singleLine="true"
             android:summary="@string/summary_clfollow_patient"
             android:title="@string/title_clfollow_patient" />
+        <Preference
+            android:key="clfollow_login"
+            android:summary="@string/summary_clfollow_login"
+            android:title="@string/title_clfollow_login">
+        </Preference>
         <EditTextPreference
             android:defaultValue="30"
             android:inputType="number"
