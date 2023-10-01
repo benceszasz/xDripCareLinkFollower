@@ -129,7 +129,7 @@ public class DexCollectionHelper {
             case Medtrum:
                 bluetoothScanIfNeeded();
                 break;
-
+            /*
             case CLFollow:
                 textSettingDialog(activity,
                         "clfollow_country", "CareLink Country",
@@ -171,6 +171,8 @@ public class DexCollectionHelper {
                             }
                         });
                 break;
+
+             */
 
             // TODO G4 Share Receiver
 
