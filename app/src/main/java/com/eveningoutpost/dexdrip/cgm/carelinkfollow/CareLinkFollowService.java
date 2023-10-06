@@ -14,6 +14,7 @@ import com.eveningoutpost.dexdrip.UtilityModels.Inevitable;
 import com.eveningoutpost.dexdrip.UtilityModels.Pref;
 import com.eveningoutpost.dexdrip.UtilityModels.StatusItem;
 import com.eveningoutpost.dexdrip.cgm.carelinkfollow.auth.CareLinkCredentialStore;
+import com.eveningoutpost.dexdrip.cgm.carelinkfollow.utils.Logger;
 import com.eveningoutpost.dexdrip.utils.DexCollectionType;
 import com.eveningoutpost.dexdrip.utils.framework.BuggySamsung;
 import com.eveningoutpost.dexdrip.utils.framework.ForegroundService;
@@ -27,12 +28,15 @@ import static com.eveningoutpost.dexdrip.Models.JoH.emptyString;
 import static com.eveningoutpost.dexdrip.Models.JoH.msSince;
 import static com.eveningoutpost.dexdrip.UtilityModels.BgGraphBuilder.DEXCOM_PERIOD;
 
+import org.apache.commons.math3.complex.Quaternion;
+
 public class CareLinkFollowService extends ForegroundService {
 
     private static final String TAG = "CareLinkFollow";
     private static final long SAMPLE_PERIOD = DEXCOM_PERIOD;
-
-    private static final boolean DEBUG_TIMING = false;
+    private static final int RATE_LIMIT_SECONDS = 20;
+    private static final String RATE_LIMIT_NAME = "last-carelink-follow-poll";
+    private static final int RATE_LIMIT_SAFETY = 10;
 
     protected static volatile String lastState = "";
 
@@ -47,12 +51,15 @@ public class CareLinkFollowService extends ForegroundService {
     private static CareLinkFollowDownloader downloader;
     private static volatile int gracePeriod = 0;
     private static volatile int pollInterval = 0;
+    private static volatile int renewBefore = 0;
+    private static volatile int renewInterval = 0;
 
     private static final long WAKE_UP_GRACE_SECOND = 60;
 
 
     @Override
     public void onCreate() {
+        Logger.Log(TAG, "onCreate");
         super.onCreate();
         resetInstance(); // manage static reference life cycle
     }
@@ -62,6 +69,7 @@ public class CareLinkFollowService extends ForegroundService {
      * Update observedDelay if new bg reading is available
      */
     static void updateBgReceiveDelay() {
+        Logger.Log(TAG, "updateBgReceiveDelay");
         lastBg = BgReading.lastNoSenssor();
         if (lastBg != null && lastBgTime != lastBg.timestamp) {
             bgReceiveDelay = JoH.msSince(lastBg.timestamp);
@@ -70,6 +78,7 @@ public class CareLinkFollowService extends ForegroundService {
     }
 
     public synchronized static void resetInstanceAndInvalidateSession() {
+        Logger.Log(TAG, "resetInstanceAndInvalidateSession");
         try {
             if (downloader != null) {
                 downloader.invalidateSession();
@@ -84,6 +93,8 @@ public class CareLinkFollowService extends ForegroundService {
         downloader = null;
         gracePeriod = 0;
         pollInterval = 0;
+        renewBefore = 0;
+        renewInterval = 0;
     }
 
     private static boolean shouldServiceRun() {
@@ -95,58 +106,102 @@ public class CareLinkFollowService extends ForegroundService {
         return Constants.SECOND_IN_MS * gracePeriod;
     }
 
+    private static long getRenewBeforeMillis() {
+        return Constants.MINUTE_IN_MS * renewBefore;
+    }
+
+    private static long getRenewIntervalMillis() {
+        return Constants.MINUTE_IN_MS * renewInterval;
+    }
+
     private static long getIntervalMillis() {
-        //return Constants.SECOND_IN_MS * WAKE_UP_GRACE_SECOND;
-        if (pollInterval == 0) {
-            if (DEBUG_TIMING) UserError.Log.d(TAG, "POLL INTERVAL IS 0 !!!");
-            return SAMPLE_PERIOD;
-        } else
-            return Constants.MINUTE_IN_MS * pollInterval;
+        return Constants.MINUTE_IN_MS * pollInterval;
+    }
+
+    private static CareLinkFollowDownloader getDownloader(){
+        if (downloader == null) {
+            downloader = new CareLinkFollowDownloader(
+                    Pref.getString("clfollow_user", ""),
+                    Pref.getString("clfollow_pass", ""),
+                    Pref.getString("clfollow_country", "").toLowerCase(),
+                    Pref.getString("clfollow_patient", "")
+            );
+        }
+        return downloader;
     }
 
     static void scheduleWakeUp() {
+
+        Logger.Log(TAG, "scheduleWakeUp");
+        String scheduleReason;
+        long next;
+
         final BgReading lastBg = BgReading.lastNoSenssor();
         final long last = lastBg != null ? lastBg.timestamp : 0;
 
-        final long next = anticipateNextWakeUp(JoH.tsl(), last, SAMPLE_PERIOD, getGraceMillis(), getIntervalMillis());
-        wakeup_time = next;
-        UserError.Log.d(TAG, "Anticipate next: " + JoH.dateTimeText(next) + "  last BG timestamp: " + JoH.dateTimeText(last));
+        final long nextTokenRefresh = anticipateNextTokenRefresh(JoH.tsl(), CareLinkCredentialStore.getInstance().getExpiresOn(), getRenewBeforeMillis(), getRenewIntervalMillis());
+        final long nextDataPoll = anticipateNextDataPoll(JoH.tsl(), last, SAMPLE_PERIOD, getGraceMillis(), getIntervalMillis());
 
+        // Token needs to refreshed sooner
+        if(nextTokenRefresh <= nextDataPoll){
+            next = nextTokenRefresh;
+            scheduleReason = " as login expires: ";
+        // Data is required sooner
+        } else {
+            next = nextDataPoll;
+            scheduleReason = " as last BG timestamp: ";
+        }
+
+        if(JoH.msTill(next) < (RATE_LIMIT_SECONDS * Constants.SECOND_IN_MS))
+            next = JoH.tsl() + (RATE_LIMIT_SECONDS * Constants.SECOND_IN_MS);
+
+        UserError.Log.d(TAG, "Anticipate next: " + JoH.dateTimeText(next) + scheduleReason + JoH.dateTimeText(last));
+
+        wakeup_time = next;
         JoH.wakeUpIntent(xdrip.getAppContext(), JoH.msTill(next), WakeLockTrampoline.getPendingIntent(CareLinkFollowService.class, Constants.CARELINKFOLLOW_SERVICE_FAILOVER_ID));
     }
 
-
     public static long anticipateNextWakeUp(long now, final long last, final long period, final long grace, final long interval) {
 
-        long next;
-        long expectedLast;
+        long nextDataPoll = anticipateNextDataPoll(now, last, period, grace, interval);
 
-        if (DEBUG_TIMING) UserError.Log.d(TAG, "Now: " + JoH.dateTimeText(now));
-        if (DEBUG_TIMING) UserError.Log.d(TAG, "Last: " + JoH.dateTimeText(last));
-        if (DEBUG_TIMING) UserError.Log.d(TAG, "Period: " + String.valueOf(period));
-        if (DEBUG_TIMING) UserError.Log.d(TAG, "Interval: " + String.valueOf(interval));
-        if (DEBUG_TIMING) UserError.Log.d(TAG, "Grace: " + String.valueOf(grace));
+        return  nextDataPoll;
+
+    }
+
+    private static long anticipateNextTokenRefresh(long now, final long expiry, final long before, final long interval){
+
+        long next;
+
+        // refresh should happen before expiration
+        next = expiry - before;
+        // add retry interval until future
+        while (next <= now) {
+            next += interval;
+        }
+
+        return next;
+
+    }
+
+    private static long anticipateNextDataPoll(long now, final long last, final long period, final long grace, final long interval) {
+
+        long next;
 
         //recent reading (less then data period) => last + period + grace
         if ((now - last) < period) {
             next = last + period + grace;
-            if (DEBUG_TIMING)
-                UserError.Log.d(TAG, "Recent reading case, next wakeup: " + JoH.dateTimeText(next));
         }
         //old reading => anticipated next + grace
         else {
             //last expected
-            if (DEBUG_TIMING) UserError.Log.d(TAG, "Old reading.");
             next = now + ((last - now) % period);
-            if (DEBUG_TIMING) UserError.Log.d(TAG, "Last expected: " + JoH.dateTimeText(next));
             //add poll interval until next time is reached
-            while (next < now) {
+            while (next <= now) {
                 next += interval;
             }
-            if (DEBUG_TIMING) UserError.Log.d(TAG, "Next poll: " + JoH.dateTimeText(next));
             //add grace
             next += grace;
-            if (DEBUG_TIMING) UserError.Log.d(TAG, "Next poll + grace: " + JoH.dateTimeText(next));
         }
 
         return next;
@@ -156,9 +211,11 @@ public class CareLinkFollowService extends ForegroundService {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+
         final PowerManager.WakeLock wl = JoH.getWakeLock("ConnectFollow-osc", 60000);
         try {
 
+            Logger.Log(TAG, "onStartCommand");
             UserError.Log.d(TAG, "WAKE UP WAKE UP WAKE UP");
 
             // Check service should be running
@@ -173,30 +230,27 @@ public class CareLinkFollowService extends ForegroundService {
 
             last_wakeup = JoH.tsl();
 
-            // Check current
             if (gracePeriod == 0)
                 gracePeriod = Pref.getStringToInt("clfollow_grace_period", 30);
             if (pollInterval == 0)
                 pollInterval = Pref.getStringToInt("clfollow_poll_interval", 5);
+            if(renewBefore == 0)
+                renewBefore = 10;
+            if(renewInterval == 0)
+                renewInterval = 1;
             lastBg = BgReading.lastNoSenssor();
             if (lastBg != null) {
                 lastBgTime = lastBg.timestamp;
             }
-            if (lastBg == null || msSince(lastBg.timestamp) > SAMPLE_PERIOD) {
-                // Get the data
-                if (downloader == null) {
-                    downloader = new CareLinkFollowDownloader(
-                            Pref.getString("clfollow_user", ""),
-                            Pref.getString("clfollow_pass", ""),
-                            Pref.getString("clfollow_country", "").toLowerCase(),
-                            Pref.getString("clfollow_patient", "")
-                    );
-                }
-
-                if (JoH.ratelimit("last-carelink-follow-poll", 5)) {
+            // Check if downloader needs to be started (last BG old or token needs to be renewed)
+            final boolean refreshToken =  (JoH.msTill(CareLinkCredentialStore.getInstance().getExpiresOn())< getRenewBeforeMillis()) ? true : false;
+            final boolean downloadData = (lastBg == null || msSince(lastBg.timestamp) > SAMPLE_PERIOD + getGraceMillis()) ? true : false;
+            if (refreshToken || downloadData) {
+                //Only start if rate limit is not exceeded
+                if (JoH.ratelimit(RATE_LIMIT_NAME, RATE_LIMIT_SAFETY)) {
                     Inevitable.task("CareLink-Follow-Work", 200, () -> {
                         try {
-                            downloader.doEverything();
+                            getDownloader().doEverything(refreshToken, downloadData);
                         } catch (NullPointerException e) {
                             UserError.Log.e(TAG, "Caught concurrency exception when trying to run doeverything");
                         }
@@ -276,7 +330,7 @@ public class CareLinkFollowService extends ForegroundService {
         //Create status screeen
         List<StatusItem> megaStatus = new ArrayList<>();
         megaStatus.add(new StatusItem("Authentication status", authStatus, authHighlight));
-        megaStatus.add(new StatusItem("Token expires in", JoH.niceTimeScalar(CareLinkCredentialStore.getInstance().getExpiresIn())));
+        megaStatus.add(new StatusItem("Login expires in", JoH.niceTimeScalar(CareLinkCredentialStore.getInstance().getExpiresIn())));
         megaStatus.add(new StatusItem());
         megaStatus.add(new StatusItem("Latest BG", ageLastBg + (lastBg != null ? " ago" : ""), bgAgeHighlight));
         megaStatus.add(new StatusItem("BG receive delay", ageOfBgLastPoll, ageOfLastBgPollHighlight));
@@ -308,6 +362,7 @@ public class CareLinkFollowService extends ForegroundService {
 
     @Override
     public void onDestroy() {
+        Logger.Log(TAG, "onDestroy");
         super.onDestroy();
         resetInstance(); // manage static reference life cycle
     }
