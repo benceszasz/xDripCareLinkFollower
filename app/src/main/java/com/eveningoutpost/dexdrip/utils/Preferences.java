@@ -1230,12 +1230,12 @@ public class Preferences extends BasePreferenceActivity implements SearchPrefere
                                     else {
                                         CareLinkAuthenticator authenticator = new CareLinkAuthenticator(country, CareLinkCredentialStore.getInstance());
                                         if (authenticator.authenticate(getActivity())) {
-                                            JoH.static_toast(preference.getContext(), "Login completed!", Toast.LENGTH_LONG);
+                                            JoH.static_toast(preference.getContext(), "Authenticated!", Toast.LENGTH_LONG);
                                             CareLinkFollowService.resetInstanceAndInvalidateSession();
                                             CollectionServiceStarter.restartCollectionServiceBackground();
                                         }
                                         else
-                                            JoH.static_toast(preference.getContext(), "Login failed!", Toast.LENGTH_LONG);
+                                            JoH.static_toast(preference.getContext(), "Not authenticated!", Toast.LENGTH_LONG);
                                     }
                                 } catch (InterruptedException e) {
 

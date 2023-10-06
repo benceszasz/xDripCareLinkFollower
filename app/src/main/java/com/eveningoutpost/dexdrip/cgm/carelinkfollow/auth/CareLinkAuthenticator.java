@@ -283,9 +283,12 @@ public class CareLinkAuthenticator {
 
             }
 
+            //Skip cookies if authentication already expired (existing old cookies found)
+            if (validToDate.getTime() < System.currentTimeMillis())
+                return false;
+
             //Update credentials
             this.credentialStore.setCredential(this.carelinkCountry, authToken, validToDate, cookieList.toArray(new Cookie[0]));
-            //success
             return true;
         } else
             //error

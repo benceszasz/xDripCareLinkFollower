@@ -677,7 +677,6 @@ public class CareLinkClient {
 
             // Send request
             try {
-                Request request = requestBuilder.build();
                 response = this.httpClient.newCall(requestBuilder.build()).execute();
                 this.lastResponseCode = response.code();
                 if (response.isSuccessful()) {
