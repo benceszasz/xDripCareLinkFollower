@@ -87,6 +87,7 @@ import com.eveningoutpost.dexdrip.UtilityModels.pebble.watchface.InstallPebbleWa
 import com.eveningoutpost.dexdrip.WidgetUpdateService;
 import com.eveningoutpost.dexdrip.calibrations.PluggableCalibration;
 import com.eveningoutpost.dexdrip.cgm.carelinkfollow.CareLinkFollowService;
+import com.eveningoutpost.dexdrip.cgm.carelinkfollow.auth.CareLinkAuthType;
 import com.eveningoutpost.dexdrip.cgm.carelinkfollow.auth.CareLinkAuthenticator;
 import com.eveningoutpost.dexdrip.cgm.carelinkfollow.auth.CareLinkCredentialStore;
 import com.eveningoutpost.dexdrip.cgm.nsfollow.NightscoutFollow;
@@ -1196,6 +1197,7 @@ public class Preferences extends BasePreferenceActivity implements SearchPrefere
             final Preference carelinkFollowDownloadBoluses = findPreference("clfollow_download_boluses");
             final Preference carelinkFollowDownloadMeals = findPreference("clfollow_download_meals");
             final Preference carelinkFollowDownloadNotifications = findPreference("clfollow_download_notifications");
+            //final Preference carelinkFollowDownloadBasals = findPreference("clfollow_download_basals");
             if (collectionType == DexCollectionType.CLFollow) {
                 //Add CL prefs
                 //collectionCategory.addPreference(carelinkFollowUser);
@@ -1209,6 +1211,7 @@ public class Preferences extends BasePreferenceActivity implements SearchPrefere
                 collectionCategory.addPreference(carelinkFollowDownloadBoluses);
                 collectionCategory.addPreference(carelinkFollowDownloadMeals);
                 collectionCategory.addPreference(carelinkFollowDownloadNotifications);
+                //collectionCategory.addPreference(carelinkFollowDownloadBasals);
                 //Create prefChange handler
                 final Preference.OnPreferenceChangeListener carelinkFollowListener = new Preference.OnPreferenceChangeListener() {
                     @Override
@@ -1218,6 +1221,7 @@ public class Preferences extends BasePreferenceActivity implements SearchPrefere
                         return true;
                     }
                 };
+                //Pref click handler for Login
                 final Preference.OnPreferenceClickListener carelinkLoginListener = new Preference.OnPreferenceClickListener() {
                     @Override
                     public boolean onPreferenceClick(Preference preference) {
@@ -1225,17 +1229,18 @@ public class Preferences extends BasePreferenceActivity implements SearchPrefere
                             public void run() {
                                 try {
                                     String country = Pref.getString("clfollow_country", "").toLowerCase();
-                                    if (country.equals(""))
-                                        JoH.static_toast(preference.getContext(), "Country is required!", Toast.LENGTH_LONG);
-                                    else {
+                                    if (country.equals("")) {
+                                        JoH.static_toast(preference.getContext(), xdrip.gs(R.string.carelink_auth_country_required), Toast.LENGTH_LONG);
+                                    } else {
                                         CareLinkAuthenticator authenticator = new CareLinkAuthenticator(country, CareLinkCredentialStore.getInstance());
-                                        if (authenticator.authenticate(getActivity())) {
-                                            JoH.static_toast(preference.getContext(), "Authenticated!", Toast.LENGTH_LONG);
+                                        if (authenticator.authenticate(getActivity(), CareLinkAuthType.MobileApp)) {
+                                            JoH.static_toast(preference.getContext(), xdrip.gs(R.string.carelink_auth_status_authenticated), Toast.LENGTH_LONG);
                                             CareLinkFollowService.resetInstanceAndInvalidateSession();
                                             CollectionServiceStarter.restartCollectionServiceBackground();
                                         }
-                                        else
-                                            JoH.static_toast(preference.getContext(), "Not authenticated!", Toast.LENGTH_LONG);
+                                        else {
+                                            JoH.static_toast(preference.getContext(), xdrip.gs(R.string.carelink_auth_status_not_authenticated), Toast.LENGTH_LONG);
+                                        }
                                     }
                                 } catch (InterruptedException e) {
 
@@ -1276,6 +1281,7 @@ public class Preferences extends BasePreferenceActivity implements SearchPrefere
                     collectionCategory.removePreference(carelinkFollowDownloadBoluses);
                     collectionCategory.removePreference(carelinkFollowDownloadMeals);
                     collectionCategory.removePreference(carelinkFollowDownloadNotifications);
+                    //collectionCategory.removePreference(carelinkFollowDownloadBasals);
                 } catch (Exception e) {
                     //
                 }
@@ -1615,6 +1621,7 @@ public class Preferences extends BasePreferenceActivity implements SearchPrefere
                     collectionCategory.removePreference(carelinkFollowDownloadBoluses);
                     collectionCategory.removePreference(carelinkFollowDownloadMeals);
                     collectionCategory.removePreference(carelinkFollowDownloadNotifications);
+                    //collectionCategory.removePreference(carelinkFollowDownloadBasals);
                 } catch (Exception e) {
                     //
                 }

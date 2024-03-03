@@ -9,7 +9,7 @@ android {
 //        abortOnError false
     }
     defaultConfig {
-        applicationId "com.eveningoutpost.dexdripva4"
+        applicationId "com.eveningoutpost.dexdrip"
         minSdkVersion 21
         //noinspection ExpiredTargetSdkVersion
         targetSdkVersion 23

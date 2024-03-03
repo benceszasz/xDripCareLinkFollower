@@ -2,18 +2,24 @@ package com.eveningoutpost.dexdrip.cgm.carelinkfollow;
 
 import android.os.PowerManager;
 
+import com.eveningoutpost.dexdrip.R;
+import com.eveningoutpost.dexdrip.cgm.carelinkfollow.auth.CareLinkAuthenticator;
+import com.eveningoutpost.dexdrip.cgm.carelinkfollow.auth.CareLinkCredentialStore;
 import com.eveningoutpost.dexdrip.Models.JoH;
 import com.eveningoutpost.dexdrip.Models.UserError;
 import com.eveningoutpost.dexdrip.UtilityModels.CollectionServiceStarter;
 import com.eveningoutpost.dexdrip.UtilityModels.Inevitable;
-import com.eveningoutpost.dexdrip.cgm.carelinkfollow.auth.CareLinkAuthenticator;
-import com.eveningoutpost.dexdrip.cgm.carelinkfollow.auth.CareLinkCredentialStore;
-import com.eveningoutpost.dexdrip.cgm.carelinkfollow.client.*;
+import com.eveningoutpost.dexdrip.cgm.carelinkfollow.client.CareLinkClient;
 import com.eveningoutpost.dexdrip.cgm.carelinkfollow.message.RecentData;
-import com.eveningoutpost.dexdrip.cgm.carelinkfollow.utils.Logger;
+import com.eveningoutpost.dexdrip.xdrip;
 
 import static com.eveningoutpost.dexdrip.Models.JoH.emptyString;
 
+/**
+ * CareLink Downloader
+ * - download data from CareLink
+ * - execute data conversion and update xDrip data
+ */
 public class CareLinkFollowDownloader {
 
     private static final String TAG = "CareLinkFollowDL";
@@ -24,7 +30,7 @@ public class CareLinkFollowDownloader {
     private String carelinkCountry;
     private String carelinkPatient;
 
-    private CareLinkClient carelinkClient;
+    private CareLinkClient careLinkClient;
 
     private boolean loginDataLooksOkay;
 
@@ -36,10 +42,6 @@ public class CareLinkFollowDownloader {
 
     public String getStatus() {
         return status;
-    }
-
-    public int getLastResponseCode() {
-        return lastResponseCode;
     }
 
     CareLinkFollowDownloader(String carelinkUsername, String carelinkPassword, String carelinkCountry, String carelinkPatient) {
@@ -56,72 +58,7 @@ public class CareLinkFollowDownloader {
         CollectionServiceStarter.restartCollectionServiceBackground();
     }
 
-    public boolean doEverything() {
-        msg("Start download");
-        if (D) UserError.Log.e(TAG, "doEverything called");
-        //if (loginDataLooksOkay) {
-        if (CareLinkCredentialStore.getInstance().getAuthStatus() == CareLinkCredentialStore.AUTHENTICATED) {
-            //Refresh token if expiration
-            if (CareLinkCredentialStore.getInstance().getExpiresIn() < 6 * 60_000) {
-                UserError.Log.e(TAG, "Token is about to expire, trying to renew it.");
-                try {
-                    if (!(new CareLinkAuthenticator(CareLinkCredentialStore.getInstance().getCredential().country, CareLinkCredentialStore.getInstance()).refreshToken())) {
-                        UserError.Log.e(TAG, "Error renewing token!");
-                        return false;
-                    } else {
-                        UserError.Log.e(TAG, "Token renewed!");
-                    }
-                } catch (Exception e) {
-                    UserError.Log.e(TAG, "Exception in renewing token! " + e.getMessage());
-                    return false;
-                }
-            }
-            try {
-                if (getCareLinkClient() != null) {
-                    extendWakeLock(30_000);
-                    backgroundProcessConnectData();
-                } else {
-                    UserError.Log.d(TAG, "Cannot get data as CareLinkClient is null");
-                    return false;
-                }
-                return true;
-            } catch (Exception e) {
-                UserError.Log.e(TAG, "Got exception in getData() " + e);
-                releaseWakeLock();
-                return false;
-            }
-        } else {
-            if (CareLinkCredentialStore.getInstance().getAuthStatus() == CareLinkCredentialStore.NOT_AUTHENTICATED) {
-                UserError.Log.e(TAG, "Not authenticated! Please login!");
-                msg("Not authenticated!");
-            }
-            if (CareLinkCredentialStore.getInstance().getAuthStatus() == CareLinkCredentialStore.TOKEN_EXPIRED) {
-                UserError.Log.e(TAG, "Token expired!");
-                msg("Token expired!");
-            }
-            /*
-            final String invalid = "Invalid CareLink login data!";
-            msg(invalid);
-            UserError.Log.e(TAG, invalid);
-            if(emptyString(carelinkUsername)){
-                UserError.Log.e(TAG, "CareLink Username empty!");
-            }
-            if(emptyString(carelinkPassword)){
-                UserError.Log.e(TAG, "CareLink Password empty!");
-            }
-            if(carelinkCountry == null){
-                UserError.Log.e(TAG, "CareLink Country empty!");
-            }else if(!CountryUtils.isSupportedCountry(carelinkCountry)){
-                UserError.Log.e(TAG, "CareLink Country not supported!");
-            }
-            */
-            return false;
-        }
-
-    }
-
     public void doEverything(boolean refreshToken, boolean downloadData) {
-        Logger.Log(TAG, "doEverything");
         if (refreshToken)
             this.refreshToken();
         if (downloadData)
@@ -129,57 +66,57 @@ public class CareLinkFollowDownloader {
     }
 
     private void downloadData() {
-        Logger.Log(TAG, "downloadData");
-        msg("Start download");
-        if (checkCredentials()) {
+        msg(xdrip.gs(R.string.carelink_download_start));
+        if (checkCredentials(true, true, true)) {
             try {
                 if (getCareLinkClient() != null) {
                     extendWakeLock(30_000);
                     backgroundProcessConnectData();
                 } else {
                     UserError.Log.d(TAG, "Cannot get data as CareLinkClient is null");
-                    msg("Download data failed!");
+                    msg(xdrip.gs(R.string.carelink_download_failed));
                 }
             } catch (Exception e) {
                 UserError.Log.e(TAG, "Got exception in getData() " + e);
                 releaseWakeLock();
-                msg("Download data failed!");
+                msg(xdrip.gs(R.string.carelink_download_failed));
             }
         }
     }
 
     private void refreshToken() {
-        Logger.Log(TAG, "refreshToken");
-        msg("Start refreshing token");
-        if (checkCredentials()) {
+        msg(xdrip.gs(R.string.carelink_refresh_token_start));
+        if (checkCredentials(true, false, true)) {
             try {
                 if (new CareLinkAuthenticator(CareLinkCredentialStore.getInstance().getCredential().country, CareLinkCredentialStore.getInstance()).refreshToken()) {
-                    UserError.Log.e(TAG, "Login token renewed!");
+                    UserError.Log.d(TAG, "Access renewed!");
                     msg(null);
                 } else {
-                    UserError.Log.e(TAG, "Error renewing login token!");
-                    msg("Login refresh failed! Will try again!");
+                    UserError.Log.e(TAG, "Error renewing access token!");
+                    msg(xdrip.gs(R.string.carelink_refresh_token_failed));
                 }
             } catch (Exception e) {
-                UserError.Log.e(TAG, "Error renewing login token: " + e.getMessage());
-                msg("Login refresh failed! Will try again!");
+                UserError.Log.e(TAG, "Error renewing access token: " + e.getMessage());
+                msg(xdrip.gs(R.string.carelink_refresh_token_failed));
             }
         }
     }
 
-    private boolean checkCredentials() {
+    private boolean checkCredentials(boolean checkAuthenticated, boolean checkAccessExpired, boolean checkRefreshExpired) {
         // Not authenticated
-        if (CareLinkCredentialStore.getInstance().getAuthStatus() != CareLinkCredentialStore.AUTHENTICATED) {
-            msg("Not logged in! Please log in!");
+        if (checkAuthenticated && CareLinkCredentialStore.getInstance().getAuthStatus() != CareLinkCredentialStore.AUTHENTICATED) {
+            msg(xdrip.gs(R.string.carelink_credential_status_not_authenticated));
             return false;
-            // Token expired
-        } else if (CareLinkCredentialStore.getInstance().getExpiresIn() <= 0) {
-            msg("Login refresh expired! Please log in!");
-            return false;
-            // Credentials are all ok!
-        } else {
-            return true;
         }
+        if (checkAccessExpired && CareLinkCredentialStore.getInstance().getAccessExpiresIn() <= 0) {
+            msg(xdrip.gs(R.string.carelink_credential_status_access_expired));
+            return false;
+        }
+        if (checkRefreshExpired && CareLinkCredentialStore.getInstance().getRefreshExpiresIn() <= 0) {
+            msg(xdrip.gs(R.string.carelink_credential_status_refresh_expired));
+            return false;
+        }
+        return true;
     }
 
     private void msg(final String msg) {
@@ -188,85 +125,86 @@ public class CareLinkFollowDownloader {
     }
 
     public void invalidateSession() {
-        this.carelinkClient = null;
+        this.careLinkClient = null;
     }
 
     private void backgroundProcessConnectData() {
-        Inevitable.task("proc-carelink-follow", 100, this::processCareLinkData);
+        Inevitable.task("proc-carelink-follow", 100, this::processConnectData);
         releaseWakeLock(); // handover to inevitable
     }
 
     // don't call this directly unless you are also handling the wakelock release
-    private void processCareLinkData() {
+    private void processConnectData() {
 
-        Logger.Log(TAG, "processCareLinkData");
         RecentData recentData = null;
         CareLinkClient carelinkClient = null;
 
+
         //Get client
         carelinkClient = getCareLinkClient();
+        //Get RecentData from CareLink client
         if (carelinkClient != null) {
-                //Get data
-                try {
-                    if (JoH.emptyString(this.carelinkPatient))
-                        recentData = getCareLinkClient().getRecentData();
-                    else
-                        recentData = getCareLinkClient().getRecentData(this.carelinkPatient);
-                    lastResponseCode = carelinkClient.getLastResponseCode();
-                } catch (Exception e) {
-                    UserError.Log.e(TAG, "Exception in CareLink data download: " + e);
-                }
-                //Process data
-                if (recentData != null) {
-                    UserError.Log.d(TAG, "Success get data!");
-                    //Process data
-                    try {
-                        //Process CareLink data (conversion and update xDrip data)
-                        CareLinkDataProcessor.processRecentData(recentData, true);
-                        //Update Service status
-                        CareLinkFollowService.updateBgReceiveDelay();
-                        msg(null);
-                    } catch (Exception e) {
-                        UserError.Log.e(TAG, "Exception in data processing: " + e);
-                        msg("Data processing error!");
-                    }
-                //Data receive error
-                } else {
-                    if (carelinkClient.getLastResponseCode() == 401) {
-                        UserError.Log.e(TAG, "CareLink login error!  Response code: " + carelinkClient.getLastResponseCode());
-                        msg("Login error!");
-                        //login error
-                    } else {
-                        UserError.Log.e(TAG, "CareLink download error! Response code: " + carelinkClient.getLastResponseCode());
-                        UserError.Log.e(TAG, "Error message: " + getCareLinkClient().getLastErrorMessage());
-                        msg("Download data failed!");
-                    }
-                }
+            //Get data
+            try {
+                if (JoH.emptyString(this.carelinkPatient))
+                    recentData = getCareLinkClient().getRecentData();
+                else
+                    recentData = getCareLinkClient().getRecentData(this.carelinkPatient);
+                lastResponseCode = carelinkClient.getLastResponseCode();
+            } catch (Exception e) {
+                UserError.Log.e(TAG, "Exception in CareLink data download: " + e);
+            }
 
+            //Process data
+            if (recentData != null) {
+                UserError.Log.d(TAG, "Success get data!");
+                try {
+                    UserError.Log.d(TAG, "Start process data");
+                    //Process CareLink data (conversion and update xDrip data)
+                    CareLinkDataProcessor.processRecentData(recentData, true);
+                    UserError.Log.d(TAG, "ProcessData finished!");
+                    //Update Service status
+                    CareLinkFollowService.updateBgReceiveDelay();
+                    msg(null);
+                } catch (Exception e) {
+                    UserError.Log.e(TAG, "Exception in data processing: " + e);
+                    msg("Data processing error!");
+                }
+                //Data receive error
+            } else {
+                if (carelinkClient.getLastResponseCode() == 401) {
+                    UserError.Log.e(TAG, "CareLink login error!  Response code: " + carelinkClient.getLastResponseCode());
+                    msg("Login error!");
+                    //login error
+                } else {
+                    UserError.Log.e(TAG, "CareLink download error! Response code: " + carelinkClient.getLastResponseCode());
+                    UserError.Log.e(TAG, "Error message: " + getCareLinkClient().getLastErrorMessage());
+                    msg("Download data failed!");
+                }
+            }
         }
 
     }
 
 
     private CareLinkClient getCareLinkClient() {
-        if (carelinkClient == null) {
+        if (careLinkClient == null) {
             try {
                 UserError.Log.d(TAG, "Creating CareLinkClient");
                 if (CareLinkCredentialStore.getInstance().getAuthStatus() == CareLinkCredentialStore.AUTHENTICATED)
-                    carelinkClient = new CareLinkClient(CareLinkCredentialStore.getInstance());
-                //carelinkClient = new CareLinkClient(carelinkUsername, carelinkPassword, carelinkCountry);
+                    careLinkClient = new CareLinkClient(CareLinkCredentialStore.getInstance());
             } catch (Exception e) {
-                UserError.Log.e(TAG, "Error creating CareLinkClient: " + e.getMessage());
+                UserError.Log.e(TAG, "Error creating CareLinkClient", e);
             }
         }
-        return carelinkClient;
+        return careLinkClient;
     }
 
 
     private static synchronized void extendWakeLock(final long ms) {
         if (wl == null) {
             if (D) UserError.Log.d(TAG, "Creating wakelock");
-            wl = JoH.getWakeLock("CareLinkFollow-download", (int) ms);
+            wl = JoH.getWakeLock("CLFollow-download", (int) ms);
         } else {
             JoH.releaseWakeLock(wl); // lets not get too messy
             wl.acquire(ms);

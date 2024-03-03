@@ -1,12 +1,15 @@
 package com.eveningoutpost.dexdrip.cgm.carelinkfollow.client;
 
 import com.eveningoutpost.dexdrip.Models.JoH;
+import com.eveningoutpost.dexdrip.cgm.carelinkfollow.auth.CareLinkAuthType;
+import com.eveningoutpost.dexdrip.cgm.carelinkfollow.auth.CareLinkAuthentication;
 import com.eveningoutpost.dexdrip.cgm.carelinkfollow.auth.CareLinkCredentialStore;
 import com.eveningoutpost.dexdrip.cgm.carelinkfollow.auth.EditableCookieJar;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.eveningoutpost.dexdrip.cgm.carelinkfollow.message.*;
+
 import okhttp3.*;
 
 import java.io.IOException;
@@ -23,7 +26,6 @@ public class CareLinkClient {
     protected static final String CARELINK_CONNECT_SERVER_EU = "carelink.minimed.eu";
     protected static final String CARELINK_CONNECT_SERVER_US = "carelink.minimed.com";
     protected static final String CARELINK_LANGUAGE_EN = "en";
-    protected static final String CARELINK_LOCALE_EN = "en";
     protected static final String CARELINK_AUTH_TOKEN_COOKIE_NAME = "auth_tmp_token";
     protected static final String CARELINK_TOKEN_VALIDTO_COOKIE_NAME = "c_token_valid_to";
     protected static final int AUTH_EXPIRE_DEADLINE_MINUTES = 1;
@@ -44,36 +46,51 @@ public class CareLinkClient {
     protected CareLinkCredentialStore credentialStore;
 
     //Session info
-    protected  boolean sessionInfosLoaded = false;
+    protected boolean sessionInfosLoaded = false;
     protected User sessionUser;
+
     public User getSessionUser() {
         return sessionUser;
     }
+
     protected Profile sessionProfile;
+
     public Profile getSessionProfile() {
         return sessionProfile;
     }
+
     protected CountrySettings sessionCountrySettings;
+
     public CountrySettings getSessionCountrySettings() {
         return sessionCountrySettings;
     }
+
     protected RecentUploads sessionRecentUploads;
+
     public RecentUploads getSessionRecentUploads() {
         return sessionRecentUploads;
     }
+
     protected Boolean sessionDeviceIsBle;
+
     public Boolean getSessionDeviceIsBle() {
         return sessionDeviceIsBle;
     }
+
     protected Boolean sessionM2MEnabled;
-    public boolean getSessionM2MEnabled(){
+
+    public boolean getSessionM2MEnabled() {
         return sessionM2MEnabled;
     }
+
     protected Patient[] sessionPatients;
-    public Patient[] getSessionPatients(){
+
+    public Patient[] getSessionPatients() {
         return sessionPatients;
     }
+
     protected MonitorData sessionMonitorData;
+
     public MonitorData getSessionMonitorData() {
         return sessionMonitorData;
     }
@@ -83,22 +100,31 @@ public class CareLinkClient {
     protected boolean loginInProcess = false;
     protected boolean collectingSessionInfos = false;
     protected int lastResponseCode;
+
     public int getLastResponseCode() {
         return lastResponseCode;
     }
+
     protected boolean lastLoginSuccess;
+
     public boolean getLastLoginSuccess() {
         return lastLoginSuccess;
     }
+
     protected boolean lastDataSuccess;
+
     public boolean getLastDataSuccess() {
         return lastDataSuccess;
     }
+
     protected String lastErrorMessage = "";
+
     public String getLastErrorMessage() {
         return lastErrorMessage;
     }
+
     protected String lastStackTraceString;
+
     public String getLastStackTraceString() {
         return lastStackTraceString;
     }
@@ -131,7 +157,10 @@ public class CareLinkClient {
         EditableCookieJar cookieJar = null;
 
         cookieJar = new EditableCookieJar();
-        cookieJar.AddCookies(this.credentialStore.getCredential().cookies);
+        //Add cookies if there are any
+        if(this.credentialStore.getCredential().cookies != null && this.credentialStore.getCredential().cookies.length > 0) {
+            cookieJar.AddCookies(this.credentialStore.getCredential().cookies);
+        }
 
         this.httpClient = new OkHttpClient.Builder()
                 .cookieJar(cookieJar)
@@ -142,17 +171,19 @@ public class CareLinkClient {
     /*
      *  WRAPPER DATA RETRIEVAL METHODS
      */
+    //Wrapper for common request of recent data (last 24 hours)
     public RecentData getRecentData() {
 
-        //Use default patient username
+        //Use default patient username if not provided
         return this.getRecentData(this.getDefaultPatientUsername());
 
     }
 
+    //Get recent data of patient
     public RecentData getRecentData(String patientUsername) {
 
         // Force login to get basic info
-        if (getAuthorizationToken() == null)
+        if (getAuthentication() == null)
             return null;
 
         // 7xxG
@@ -168,10 +199,11 @@ public class CareLinkClient {
 
     }
 
+    //Determine default patient
     public String getDefaultPatientUsername() {
 
         // Force login to get basic info
-        if (getAuthorizationToken() == null)
+        if (getAuthentication() == null)
             return null;
 
         // Care Partner + multi follow => first patient
@@ -180,7 +212,7 @@ public class CareLinkClient {
                 return this.sessionPatients[0].username;
             else
                 return null;
-        // Not care partner or no multi follow => username from session profile
+            // Not care partner or no multi follow => username from session profile
         else if (this.sessionProfile.username != null)
             return this.sessionProfile.username;
         else
@@ -196,10 +228,10 @@ public class CareLinkClient {
             return sessionDeviceIsBle;
 
         // Force login to get basic info
-        if(getAuthorizationToken() == null)
+        if(getAuthentication() == null)
             return  false;
 
-        // Determine session device by recent uploads
+        // Patient: device from recent uploads if possible
         if(!this.sessionUser.isCarePartner()){
             recentUploadBle = this.isRecentUploadBle();
             if(recentUploadBle != null){
@@ -208,6 +240,7 @@ public class CareLinkClient {
             }
         }
 
+        // Care partner (+M2M): device from patient list
         if(this.sessionM2MEnabled && this.sessionUser.isCarePartner())
             if(patientUsername == null || this.sessionPatients == null)
                 return false;
@@ -218,6 +251,7 @@ public class CareLinkClient {
                 }
                 return false;
             }
+            // Other: classic method (session monitor data)
         else
             return this.sessionMonitorData.isBle();
 
@@ -276,7 +310,7 @@ public class CareLinkClient {
             consentResponse.close();
 
             // Get required sessions infos
-            if(this.getSessionInfos())
+            if (this.getSessionInfos())
                 lastLoginSuccess = true;
 
         } catch (Exception e) {
@@ -365,7 +399,7 @@ public class CareLinkClient {
 
         requestBuilder = new Request.Builder().url(url);
 
-        this.addHttpHeaders(requestBuilder, RequestType.HtmlGet);
+        this.addHttpHeaders(requestBuilder, RequestType.HtmlGet, true);
 
         return this.httpClient.newCall(requestBuilder.build()).execute();
 
@@ -399,7 +433,7 @@ public class CareLinkClient {
                 .url(url)
                 .post(form);
 
-        this.addHttpHeaders(requestBuilder, RequestType.HtmlGet);
+        this.addHttpHeaders(requestBuilder, RequestType.HtmlGet, true);
 
         return this.httpClient.newCall(requestBuilder.build()).execute();
 
@@ -427,14 +461,15 @@ public class CareLinkClient {
 
         requestBuilder = new Request.Builder().url(consentUrl).post(form);
 
-        this.addHttpHeaders(requestBuilder, RequestType.HtmlPost);
+        this.addHttpHeaders(requestBuilder, RequestType.HtmlPost, true);
 
         return this.httpClient.newCall(requestBuilder.build()).execute();
 
     }
 
-    protected String getAuthorizationToken() {
+    protected CareLinkAuthentication getAuthentication() {
 
+        // CredentialStore is used
         if(this.credentialStore != null){
             if(!this.sessionInfosLoaded && this.credentialStore.getAuthStatus() == CareLinkCredentialStore.AUTHENTICATED && !this.collectingSessionInfos)
             {
@@ -443,13 +478,11 @@ public class CareLinkClient {
             if(!this.collectingSessionInfos && !this.sessionInfosLoaded)
                 return  null;
             else
-                return this.credentialStore.getCredential().getAuthorizationFieldValue();
-        } else {
-
+                return this.credentialStore.getCredential().getAuthentication();
             // New token is needed:
             // a) no token or about to expire => execute authentication
             // b) last response 401
-            // c) last login failed after login process completed
+        } else {
             if (!((SimpleOkHttpCookieJar) httpClient.cookieJar()).contains(CARELINK_AUTH_TOKEN_COOKIE_NAME)
                     || !((SimpleOkHttpCookieJar) httpClient.cookieJar()).contains(CARELINK_TOKEN_VALIDTO_COOKIE_NAME)
                     || !((new Date(Date.parse(((SimpleOkHttpCookieJar) httpClient.cookieJar())
@@ -464,9 +497,13 @@ public class CareLinkClient {
                     return null;
             }
 
-            // there can be only one
-            return "Bearer" + " " + ((SimpleOkHttpCookieJar) httpClient.cookieJar()).getCookies(CARELINK_AUTH_TOKEN_COOKIE_NAME).get(0).value();
+            //there can be only one auth cookie
+            return new CareLinkAuthentication(
+                    new Headers.Builder().add("Authorization", "Bearer" + " " + ((SimpleOkHttpCookieJar) httpClient.cookieJar()).getCookies(CARELINK_AUTH_TOKEN_COOKIE_NAME).get(0).value()).build(),
+                    CareLinkAuthType.Browser);
+            //return "Bearer" + " " + ((SimpleOkHttpCookieJar) httpClient.cookieJar()).getCookies(CARELINK_AUTH_TOKEN_COOKIE_NAME).get(0).value();
         }
+
 
     }
 
@@ -539,7 +576,7 @@ public class CareLinkClient {
             recentData = this.getData(this.careLinkServer(), "patient/connect/data", queryParams, null, RecentData.class);
             if (recentData != null)
                 correctTimeInRecentData(recentData);
-        }catch (Exception e){
+        } catch (Exception e) {
             lastErrorMessage = e.getClass().getSimpleName() + ":" + e.getMessage();
         }
 
@@ -559,7 +596,7 @@ public class CareLinkClient {
         userJson = new JsonObject();
         userJson.addProperty("username", username);
         userJson.addProperty("role", role);
-        if(!JoH.emptyString(patientUsername))
+        if (!JoH.emptyString(patientUsername))
             userJson.addProperty("patientId", patientUsername);
 
         gson = new GsonBuilder().create();
@@ -570,7 +607,7 @@ public class CareLinkClient {
             recentData = this.getData(HttpUrl.parse(endpointUrl), requestBody, RecentData.class);
             if (recentData != null)
                 correctTimeInRecentData(recentData);
-        }catch (Exception e){
+        } catch (Exception e) {
             lastErrorMessage = e.getClass().getSimpleName() + ":" + e.getMessage();
         }
         return recentData;
@@ -583,7 +620,7 @@ public class CareLinkClient {
         Map<String, String> queryParams = null;
 
         //Patient username is mandantory!
-        if(patientUsername == null || patientUsername.isEmpty())
+        if (patientUsername == null || patientUsername.isEmpty())
             return null;
 
         queryParams = new HashMap<String, String>();
@@ -615,17 +652,16 @@ public class CareLinkClient {
     }
 
     // Http header builder for requests
-    protected void addHttpHeaders(Request.Builder requestBuilder, RequestType type) {
+    protected void addHttpHeaders(Request.Builder requestBuilder, RequestType type, boolean isBrowserClient) {
 
         //Add common browser headers
-        requestBuilder
-                .addHeader("Accept-Language", "en;q=0.9, *;q=0.8")
-                .addHeader("Connection", "keep-alive")
-                //.addHeader("Sec-Ch-Ua", "\"Not/A)Brand\";v=\"99\", \"Google Chrome\";v=\"115\", \"Chromium\";v=\"115\"")
-                .addHeader("Sec-Ch-Ua", "\"Google Chrome\";v=\"117\", \"Not;A=Brand\";v=\"8\", \"Chromium\";v=\"117\"")
-                .addHeader("User-Agent", "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Mobile Safari/537.36")
-        //.addHeader("Connection", "keep-alive");
-        ;
+        if(isBrowserClient) {
+            requestBuilder
+                    .addHeader("Accept-Language", "en;q=0.9, *;q=0.8")
+                    .addHeader("Connection", "keep-alive")
+                    .addHeader("Sec-Ch-Ua", "\"Google Chrome\";v=\"117\", \"Not;A=Brand\";v=\"8\", \"Chromium\";v=\"117\"")
+                    .addHeader("User-Agent", "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Mobile Safari/537.36");
+        }
 
         //Set media type based on request type
         switch (type) {
@@ -634,45 +670,44 @@ public class CareLinkClient {
                 requestBuilder.addHeader("Content-Type", "application/json; charset=utf-8");
                 break;
             case HtmlGet:
-                requestBuilder.addHeader("Accept",
-                        "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9");
-                break;
+                requestBuilder.addHeader("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9");
             case HtmlPost:
-                requestBuilder.addHeader("Accept",
-                        "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9");
+                requestBuilder.addHeader("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9");
                 requestBuilder.addHeader("Content-Type", "application/x-www-form-urlencoded");
                 break;
         }
 
     }
 
-    // Data request for API calls
+    // General data request for API calls
     protected <T> T getData(HttpUrl url, RequestBody requestBody, Class<T> dataClass) {
 
         Request.Builder requestBuilder = null;
         HttpUrl.Builder urlBuilder = null;
-        String authToken = null;
+        CareLinkAuthentication authentication = null;
         String responseString = null;
         Response response = null;
         Object data = null;
+        boolean isBrowserClient = true;
 
         this.lastDataSuccess = false;
         this.lastErrorMessage = "";
 
-        // Get auth token
-        authToken = this.getAuthorizationToken();
+        // Get authentication
+        authentication = this.getAuthentication();
 
-        if (authToken != null) {
+        if (authentication != null) {
 
             // Create request for URL with authToken
-            requestBuilder = new Request.Builder().url(url).addHeader("Authorization", authToken);
+            //requestBuilder = new Request.Builder().url(url).addHeader("Authorization", authToken);
+            requestBuilder = new Request.Builder().url(url).headers(authentication.getHeaders());
 
-            // Add header
+            // Add additional headers
             if (requestBody == null) {
-                this.addHttpHeaders(requestBuilder, RequestType.Json);
+                this.addHttpHeaders(requestBuilder, RequestType.Json, authentication.authType == CareLinkAuthType.Browser);
             } else {
                 requestBuilder.post(requestBody);
-                this.addHttpHeaders(requestBuilder, RequestType.HtmlPost);
+                this.addHttpHeaders(requestBuilder, RequestType.HtmlPost, authentication.authType == CareLinkAuthType.Browser);
             }
 
             // Send request
@@ -684,7 +719,7 @@ public class CareLinkClient {
                         responseString = response.body().string();
                         data = new GsonBuilder().create().fromJson(responseString, dataClass);
                         this.lastDataSuccess = true;
-                    } catch (Exception e){
+                    } catch (Exception e) {
                         lastErrorMessage = e.getClass().getSimpleName() + ":" + e.getMessage();
                     }
                 }
@@ -696,7 +731,7 @@ public class CareLinkClient {
         }
 
         //Return result
-        if(data != null)
+        if (data != null)
             return dataClass.cast(data);
         else
             return null;
@@ -723,27 +758,27 @@ public class CareLinkClient {
 
     }
 
-    protected void correctTimeInRecentData(RecentData recentData){
+    protected void correctTimeInRecentData(RecentData recentData) {
 
         boolean timezoneMissing = false;
         String offsetString = null;
 
-        if(recentData.sMedicalDeviceTime != null && !recentData.sMedicalDeviceTime.isEmpty() &&  recentData.lastMedicalDeviceDataUpdateServerTime > 1) {
+        if (recentData.sMedicalDeviceTime != null && !recentData.sMedicalDeviceTime.isEmpty() && recentData.lastMedicalDeviceDataUpdateServerTime > 1) {
 
             //MedicalDeviceTime string has no timezone information
-            if(parseDateString(recentData.sMedicalDeviceTime) == null) {
+            if (parseDateString(recentData.sMedicalDeviceTime) == null) {
 
                 timezoneMissing = true;
 
                 //offset = this.getZonedDate(recentData.lastSG.datetime).getOffset();
                 //Try get TZ offset string: lastSG or lastAlarm
-                if(recentData.lastSG != null && recentData.lastSG.datetime != null)
+                if (recentData.lastSG != null && recentData.lastSG.datetime != null)
                     offsetString = this.getZoneOffset(recentData.lastSG.datetime);
                 else
                     offsetString = this.getZoneOffset(recentData.lastAlarm.datetime);
 
 
-                if(recentData.lastAlarm != null && recentData.lastAlarm.datetime != null)
+                if (recentData.lastAlarm != null && recentData.lastAlarm.datetime != null)
                     recentData.lastAlarm.datetimeAsDate = parseDateString(recentData.lastAlarm.datetime);
                 //Build correct dates with timezone
                 recentData.sMedicalDeviceTime = recentData.sMedicalDeviceTime + offsetString;
@@ -769,7 +804,7 @@ public class CareLinkClient {
             }
 
             //Timezone was present => check if time needs correction
-            if(!timezoneMissing) {
+            if (!timezoneMissing) {
 
                 //Calc time diff between event time and actual local time
                 int diffInHour = (int) Math.round(((recentData.lastMedicalDeviceDataUpdateServerTime - recentData.dMedicalDeviceTime.getTime()) / 3600000D));
@@ -828,41 +863,42 @@ public class CareLinkClient {
 
     }
 
-    protected String getZoneOffset(String dateString){
+    protected String getZoneOffset(String dateString) {
         Matcher offsetDataMatcher = Pattern.compile(("(.*)([\\+|-].*)")).matcher(dateString);
-        if(offsetDataMatcher.find())
+        if (offsetDataMatcher.find())
             return offsetDataMatcher.group(2);
         else
-            return  null;
+            return null;
     }
 
-    protected Date parseDateString(String dateString){
-        for(SimpleDateFormat zonedFormat : ZONED_DATE_FORMATS){
+    protected Date parseDateString(String dateString) {
+        for (SimpleDateFormat zonedFormat : ZONED_DATE_FORMATS) {
             try {
                 return zonedFormat.parse(dateString);
-            }catch (Exception ex){}
+            } catch (Exception ex) {
+            }
         }
-        return  null;
+        return null;
     }
 
-    protected Date shiftDateByHours(Date date, int hours){
-        if(date != null) {
+    protected Date shiftDateByHours(Date date, int hours) {
+        if (date != null) {
             Calendar calendar = Calendar.getInstance();
             calendar.setTime(date);
             calendar.add(Calendar.HOUR_OF_DAY, hours);
             return calendar.getTime();
         } else {
-            return  null;
+            return null;
         }
     }
 
     //Calculate DateTime using graph index (1 index = 5 minute)
-    protected static Date calcTimeByIndex(Date lastSensorTime, int index, boolean round){
-        if(lastSensorTime == null)
+    protected static Date calcTimeByIndex(Date lastSensorTime, int index, boolean round) {
+        if (lastSensorTime == null)
             return null;
-        else if(round)
+        else if (round)
             //round to 10 minutes
-            return new Date((Math.round((calcTimeByIndex(lastSensorTime,index,false).getTime()) / 600_000D) * 600_000L));
+            return new Date((Math.round((calcTimeByIndex(lastSensorTime, index, false).getTime()) / 600_000D) * 600_000L));
         else
             return new Date((lastSensorTime.getTime() - ((287 - index) * 300_000L)));
     }
